@@ -6,7 +6,7 @@ const User = require('../models/User');
 exports.getAllUsers = async (req, res) => {
   try {
     const { status, role, page = 1, limit = 10 } = req.query;
-    
+
     // Build filter
     const filter = {};
     if (status) filter.status = status;
@@ -14,7 +14,7 @@ exports.getAllUsers = async (req, res) => {
 
     // Pagination
     const skip = (page - 1) * limit;
-    
+
     const users = await User.find(filter)
       .limit(parseInt(limit))
       .skip(skip)

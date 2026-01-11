@@ -58,15 +58,15 @@ function UserList() {
         <div className="empty-state">
           <h3>No users found</h3>
           <p>Create a user using the API or Postman</p>
-          <pre style={{ 
-            background: '#2d2d2d', 
-            color: '#f8f8f2', 
-            padding: '1rem', 
+          <pre style={{
+            background: '#2d2d2d',
+            color: '#f8f8f2',
+            padding: '1rem',
             borderRadius: '8px',
             marginTop: '1rem',
             textAlign: 'left'
           }}>
-{`POST http://localhost:5000/api/users
+            {`POST http://localhost:5000/api/users
 {
   "name": "John Doe",
   "email": "john@example.com",
@@ -83,7 +83,7 @@ function UserList() {
               <p style={{ color: '#666', marginBottom: '0.5rem' }}>📧 {user.email}</p>
               <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                 {user.age && <span style={{ color: '#666' }}>🎂 Age: {user.age}</span>}
-                <span style={{ 
+                <span style={{
                   background: user.status === 'active' ? '#d4edda' : '#f8d7da',
                   color: user.status === 'active' ? '#155724' : '#721c24',
                   padding: '0.25rem 0.75rem',
@@ -92,7 +92,7 @@ function UserList() {
                 }}>
                   {user.status}
                 </span>
-                <span style={{ 
+                <span style={{
                   background: '#e3f2fd',
                   color: '#1565c0',
                   padding: '0.25rem 0.75rem',

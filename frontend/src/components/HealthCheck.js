@@ -104,10 +104,10 @@ function HealthCheck() {
 
       <div style={{ marginTop: '2rem', padding: '1rem', background: '#f8f9fa', borderRadius: '8px' }}>
         <h3 style={{ marginBottom: '1rem', color: '#333' }}>📊 Response Data:</h3>
-        <pre style={{ 
-          background: '#2d2d2d', 
-          color: '#f8f8f2', 
-          padding: '1rem', 
+        <pre style={{
+          background: '#2d2d2d',
+          color: '#f8f8f2',
+          padding: '1rem',
           borderRadius: '8px',
           overflow: 'auto',
           fontSize: '0.9rem'

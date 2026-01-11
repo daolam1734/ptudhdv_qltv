@@ -1,67 +1,91 @@
 import axios from 'axios';
 
-// Create axios instance with base configuration
+let API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api/';
+
+// Ensure API_URL points to /api/
+if (!API_URL.endsWith('/api/')) {
+  if (API_URL.endsWith('/api')) {
+    API_URL += '/';
+  } else if (API_URL.endsWith('/')) {
+    API_URL += 'api/';
+  } else {
+    API_URL += '/api/';
+  }
+}
+
 const apiClient = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5000',
-  timeout: 10000,
+  baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Request interceptor for adding auth tokens or logging
+// Auth token interceptor
 apiClient.interceptors.request.use(
   (config) => {
-    // You can add auth tokens here if needed
-    // const token = localStorage.getItem('token');
-    // if (token) {
-    //   config.headers.Authorization = `Bearer ${token}`;
-    // }
+    // Ensure baseURL ends with / if we use relative paths without /
+    // Or better, don't use leading slashes in relative paths with baseURL
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// Response interceptor for handling errors globally
+// Response error handler
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response) {
-      // Server responded with error status
-      console.error('API Error:', error.response.data);
-    } else if (error.request) {
-      // Request made but no response received
-      console.error('Network Error:', error.request);
-    } else {
-      // Something else happened
-      console.error('Error:', error.message);
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
 );
 
-// API service methods
 const api = {
-  // Root and Health endpoints
-  getRoot: () => apiClient.get('/'),
-  getHealth: () => apiClient.get('/health'),
-
-  // User endpoints
-  getAllUsers: (params) => apiClient.get('/api/users', { params }),
-  getUserById: (id) => apiClient.get(`/api/users/${id}`),
-  createUser: (data) => apiClient.post('/api/users', data),
-  updateUser: (id, data) => apiClient.put(`/api/users/${id}`, data),
-  deleteUser: (id) => apiClient.delete(`/api/users/${id}`),
-
-  // Item endpoints
-  getAllItems: (params) => apiClient.get('/api/items', { params }),
-  getItemById: (id) => apiClient.get(`/api/items/${id}`),
-  createItem: (data) => apiClient.post('/api/items', data),
-  updateItem: (id, data) => apiClient.put(`/api/items/${id}`, data),
-  deleteItem: (id) => apiClient.delete(`/api/items/${id}`),
-  updateItemStock: (id, quantity) => apiClient.patch(`/api/items/${id}/stock`, { quantity }),
+  auth: {
+    login: (credentials) => apiClient.post('auth/login', credentials),
+    register: (data) => apiClient.post('auth/register', data),
+    getMe: () => apiClient.get('auth/me'),
+  },
+  books: {
+    getAll: (params) => apiClient.get('books', { params }),
+    getById: (id) => apiClient.get(`books/${id}`),
+    create: (data) => apiClient.post('books', data),
+    update: (id, data) => apiClient.put(`books/${id}`, data),
+    delete: (id) => apiClient.delete(`books/${id}`),
+    search: (q) => apiClient.get('books/search', { params: { q } }),
+  },
+  readers: {
+    getAll: (params) => apiClient.get('readers', { params }),
+    getById: (id) => apiClient.get(`readers/${id}`),
+    update: (id, data) => apiClient.put(`readers/${id}`, data),
+    getHistory: (id) => apiClient.get(`readers/${id}/borrow-history`),
+    getMyHistory: () => apiClient.get('readers/me/history'),
+  },
+  borrow: {
+    create: (data) => apiClient.post('borrow', data),
+    returnBook: (data) => apiClient.post('borrow/return', data),
+    getAll: (params) => apiClient.get('borrow/all', { params }),
+    getReaderHistory: (readerId) => apiClient.get(`borrow/history/${readerId}`),
+  },
+  staff: {
+    getAll: (params) => apiClient.get('staff', { params }),
+    create: (data) => apiClient.post('staff', data),
+    update: (id, data) => apiClient.put(`staff/${id}`, data),
+    delete: (id) => apiClient.delete(`staff/${id}`),
+  },
+  reports: {
+    getBorrowedStats: () => apiClient.get('reports/borrowed-books'),
+    getTopReaders: (params) => apiClient.get('reports/top-readers', { params }),
+  }
 };
 
 export default api;

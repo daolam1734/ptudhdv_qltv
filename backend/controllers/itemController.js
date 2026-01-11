@@ -6,7 +6,7 @@ const Item = require('../models/Item');
 exports.getAllItems = async (req, res) => {
   try {
     const { category, inStock, minPrice, maxPrice, search, page = 1, limit = 10 } = req.query;
-    
+
     // Build filter
     const filter = {};
     if (category) filter.category = category;
@@ -22,7 +22,7 @@ exports.getAllItems = async (req, res) => {
 
     // Pagination
     const skip = (page - 1) * limit;
-    
+
     const items = await Item.find(filter)
       .populate('createdBy', 'name email')
       .limit(parseInt(limit))
