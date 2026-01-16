@@ -73,7 +73,8 @@ const ReaderHistoryPage = () => {
       returned: { bg: "bg-emerald-50", text: "text-emerald-600", border: "border-emerald-100", label: "Đã trả" },
       rejected: { bg: "bg-gray-100", text: "text-gray-500", border: "border-gray-200", label: "Đã hủy/Từ chối" },
       lost: { bg: "bg-gray-900", text: "text-white", border: "border-gray-900", label: "Mất sách" },
-      damaged: { bg: "bg-stone-50", text: "text-stone-600", border: "border-stone-100", label: "Hư hỏng" }
+      damaged: { bg: "bg-amber-50", text: "text-amber-600", border: "border-amber-100", label: "Hư hỏng nhẹ" },
+      damaged_heavy: { bg: "bg-rose-50", text: "text-rose-600", border: "border-rose-100", label: "Hư hỏng nặng" }
     };
     const style = map[status] || map.returned;
     return (

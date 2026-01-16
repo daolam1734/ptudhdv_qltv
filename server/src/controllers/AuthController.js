@@ -175,7 +175,7 @@ class AuthController {
     const { oldPassword, newPassword } = req.body;
     if (!oldPassword || !newPassword) return ApiResponse.error(res, 'Old password and new password are required', 400);
 
-    await this.authService.changePassword(req.user.id, oldPassword, newPassword);
+    await this.authService.changePassword(req.user.id, req.user.role, oldPassword, newPassword);
     ApiResponse.success(res, null, 'Password changed successfully');
   });
 }

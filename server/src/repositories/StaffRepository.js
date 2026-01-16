@@ -20,15 +20,6 @@ class StaffRepository extends BaseRepository {
       { new: true }
     );
   }
-
-  async changePassword(id, newPassword) {
-    const staff = await this.model.findById(id);
-    if (!staff) return null;
-
-    staff.password = newPassword;
-    await staff.save();
-    return staff;
-  }
 }
 
 module.exports = StaffRepository;

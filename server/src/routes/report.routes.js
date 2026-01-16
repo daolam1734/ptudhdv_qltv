@@ -9,6 +9,9 @@ module.exports = () => {
   router.get('/', reportController.getLibraryStats);
   router.get('/borrowed-books', reportController.getBorrowedBooksStats);
   router.get('/top-readers', reportController.getTopReaders);
+  router.get('/top-books', reportController.getTopBooks);
   router.get('/activities', reportController.getRecentActivities);
+  router.get('/trends', reportController.getTrends);
+  router.get('/export', reportController.exportReport);
   return router;
 };

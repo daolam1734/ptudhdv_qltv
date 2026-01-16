@@ -240,7 +240,13 @@ class BorrowController {
     const { page = 1, limit = 10, status, readerId, bookId, search } = req.query;
     
     const filter = {};
-    if (status && status !== 'all') filter.status = status;
+    if (status && status !== 'all') {
+      if (status.includes(',')) {
+        filter.status = { $in: status.split(',') };
+      } else {
+        filter.status = status;
+      }
+    }
     if (readerId) filter.readerId = readerId;
     if (bookId) filter.bookId = bookId;
 

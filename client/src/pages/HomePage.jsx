@@ -72,19 +72,19 @@ const HomePage = () => {
           bookService.getCategories()
         ];
 
-        // Only fetch history if authenticated
-        if (isAuthenticated) {
+        // Only fetch history and favorites if authenticated as a reader
+        if (isAuthenticated && user?.role === 'reader') {
           promises.push(borrowService.getMyHistory());
           promises.push(readerService.getFavorites());
         }
 
         const [booksRes, catRes, historyRes, favRes] = await Promise.all(promises);
 
-        if (isAuthenticated && historyRes) {
+        if (isAuthenticated && user?.role === 'reader' && historyRes) {
           const history = Array.isArray(historyRes.data) ? historyRes.data : (historyRes.data?.data || []);
           
-          const borrowingCount = history.filter(h => h.status === 'borrowed' || h.status === 'pending').length;
-          const returnedCount = history.filter(h => h.status === 'returned').length;
+          const borrowingCount = history.filter(h => h.status === 'borrowed' || h.status === 'pending' || h.status === 'approved').length;
+          const returnedCount = history.filter(h => ['returned', 'damaged', 'damaged_heavy', 'lost'].includes(h.status)).length;
           const overdueCount = history.filter(h => h.status === 'overdue').length;
 
           setStats({
@@ -96,7 +96,7 @@ const HomePage = () => {
           setRecentBorrows(history.slice(0, 3));
         }
 
-        if (isAuthenticated && favRes) {
+        if (isAuthenticated && user?.role === 'reader' && favRes) {
           setFavorites(favRes.data.map(f => f._id) || []);
         }
 

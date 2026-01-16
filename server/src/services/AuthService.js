@@ -118,14 +118,19 @@ class AuthService extends BaseService {
     return { user, token };
   }
 
-  async changePassword(staffId, oldPassword, newPassword) {
-    const staff = await this.repository.findById(staffId);
-    if (!staff) throw new Error('Staff not found');
+  async changePassword(userId, userRole, oldPassword, newPassword) {
+    const repository = userRole === 'reader' ? this.readerRepository : this.repository;
+    
+    // Explicitly select password since it has select: false in schema
+    const user = await repository.model.findById(userId).select('+password');
+    if (!user) throw new Error('User not found');
 
-    const isPasswordValid = await staff.comparePassword(oldPassword);
+    const isPasswordValid = await user.comparePassword(oldPassword);
     if (!isPasswordValid) throw new Error('Current password is incorrect');
 
-    await this.repository.changePassword(staffId, newPassword);
+    user.password = newPassword;
+    await user.save();
+    
     return { message: 'Password changed successfully' };
   }
 

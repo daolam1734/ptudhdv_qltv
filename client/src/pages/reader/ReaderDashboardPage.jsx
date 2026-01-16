@@ -82,8 +82,8 @@ const ReaderDashboardPage = () => {
         if (isAuthenticated && historyRes) {
           const history = Array.isArray(historyRes.data) ? historyRes.data : (historyRes.data?.data || []);
           
-          const borrowingCount = history.filter(h => h.status === 'borrowed' || h.status === 'pending').length;
-          const returnedCount = history.filter(h => h.status === 'returned').length;
+          const borrowingCount = history.filter(h => h.status === 'borrowed' || h.status === 'pending' || h.status === 'approved').length;
+          const returnedCount = history.filter(h => ['returned', 'damaged', 'damaged_heavy', 'lost'].includes(h.status)).length;
           const overdueCount = history.filter(h => h.status === 'overdue').length;
 
           setStats({

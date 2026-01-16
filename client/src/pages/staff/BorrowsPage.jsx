@@ -79,7 +79,12 @@ const BorrowsPage = () => {
     try {
       setLoading(true);
       const params = { page, limit: 10, search };
-      if (activeTab !== "all") params.status = activeTab;
+      
+      if (activeTab === "returned") {
+        params.status = "returned,damaged,damaged_heavy,lost";
+      } else if (activeTab !== "all") {
+        params.status = activeTab;
+      }
       
       const res = await borrowService.getAll(params);
       setRecords(res.data);
@@ -746,10 +751,7 @@ const BorrowsPage = () => {
                                     <span className="text-xl font-black text-red-600">{(returnResult.fine.amount).toLocaleString()}đ</span>
                                 </div>
                                 <p className="text-[11px] text-gray-400 font-bold text-left italic">
-                                    * Lý do: {returnResult.fine.reason === 'overdue' ? 'Quá hạn trả' : 
-                                             returnResult.fine.reason === 'damaged_book' ? 'Làm hư hỏng tài liệu (nhẹ)' : 
-                                             returnResult.fine.reason === 'damaged_book_heavy' ? 'Làm hư hỏng tài liệu (nặng)' : 
-                                             returnResult.fine.reason === 'lost_book' ? 'Làm mất tài liệu' : 'Khác'}
+                                    * Lý do: {returnResult.fine.reason}
                                 </p>
                             </div>
                         ) : (

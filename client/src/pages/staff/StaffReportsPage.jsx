@@ -12,30 +12,31 @@ import {
 
 const StaffReportsPage = () => {
     const [stats, setStats] = useState(null);
-    const [borrowedStats, setBorrowedStats] = useState(null);
     const [topReaders, setTopReaders] = useState([]);
     const [activities, setActivities] = useState([]);
+    const [trends, setTrends] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [timeRange, setTimeRange] = useState('7days');
+    const [timeRange, setTimeRange] = useState('30days');
 
     useEffect(() => {
         fetchReports();
-    }, []);
+    }, [timeRange]);
 
     const fetchReports = async () => {
         try {
             setLoading(true);
-            const [statsRes, borrowedRes, readersRes, activitiesRes] = await Promise.all([
+            const days = timeRange === '7days' ? 7 : 30;
+            const [statsRes, readersRes, activitiesRes, trendsRes] = await Promise.all([
                 reportService.getLibraryStats(),
-                reportService.getBorrowedStats(),
                 reportService.getTopReaders({ limit: 5 }),
-                reportService.getRecentActivities({ limit: 8 })
+                reportService.getRecentActivities({ limit: 8 }),
+                reportService.getTrends(days)
             ]);
 
             setStats(statsRes.data);
-            setBorrowedStats(borrowedRes.data);
             setTopReaders(readersRes.data);
             setActivities(activitiesRes.data);
+            setTrends(trendsRes.data);
         } catch (error) {
             console.error('Failed to fetch reports:', error);
         } finally {
@@ -59,18 +60,18 @@ const StaffReportsPage = () => {
 
     const summaryCards = [
         { 
-            label: 'Tổng sách lưu thông', 
-            value: stats?.bookStats?.totalBooks || 0, 
-            icon: <BookOpen className="text-indigo-600" />, 
-            trend: '+2.4%', 
+            label: 'Độc giả hoạt động', 
+            value: stats?.readerStats?.totalReaders || 0, 
+            icon: <Users className="text-indigo-600" />, 
+            trend: 'Tổng số', 
             isUp: true,
             bg: 'bg-indigo-50'
         },
         { 
-            label: 'Đang mượn', 
+            label: 'Sách đang mượn', 
             value: stats?.borrowStats?.activeBorrows || 0, 
             icon: <TrendingUp className="text-emerald-600" />, 
-            trend: '+12%', 
+            trend: 'Lưu thông', 
             isUp: true,
             bg: 'bg-emerald-50'
         },
@@ -78,7 +79,7 @@ const StaffReportsPage = () => {
             label: 'Quá hạn trả', 
             value: stats?.borrowStats?.overdueBorrows || 0, 
             icon: <AlertCircle className="text-rose-600" />, 
-            trend: '-5%', 
+            trend: 'Cần thu hồi', 
             isUp: false,
             bg: 'bg-rose-50'
         },
@@ -86,7 +87,7 @@ const StaffReportsPage = () => {
             label: 'Yêu cầu chờ duyệt', 
             value: stats?.borrowStats?.pendingRequests || 0, 
             icon: <Clock className="text-amber-600" />, 
-            trend: '8 yêu cầu mới', 
+            trend: 'Đợi xử lý', 
             isUp: true,
             bg: 'bg-amber-50'
         },
@@ -147,20 +148,36 @@ const StaffReportsPage = () => {
                 <div className="lg:col-span-2 bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
                     <div className="flex items-center justify-between mb-8">
                         <div>
-                            <h4 className="text-lg font-black text-slate-900 tracking-tight">Xu hướng mượn sách</h4>
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Thống kê theo thể loại</p>
+                            <h4 className="text-lg font-black text-slate-900 tracking-tight">Thống kê Lưu thông</h4>
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Xu hướng mượn & trả ({timeRange})</p>
                         </div>
-                        <div className="flex gap-2">
-                             <div className="h-2 w-2 rounded-full bg-indigo-500 shrink-0 mt-1.5"></div>
-                             <span className="text-[10px] font-black text-slate-500 uppercase">Top Trending</span>
+                        <div className="flex gap-4">
+                             <div className="flex items-center gap-2">
+                                <div className="h-2 w-2 rounded-full bg-indigo-500"></div>
+                                <span className="text-[10px] font-black text-slate-400 uppercase">Mượn</span>
+                             </div>
+                             <div className="flex items-center gap-2">
+                                <div className="h-2 w-2 rounded-full bg-emerald-500"></div>
+                                <span className="text-[10px] font-black text-slate-400 uppercase">Trả</span>
+                             </div>
                         </div>
                     </div>
                     <div className="h-80 w-full mt-4">
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={borrowedStats?.byCategory || []} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                            <AreaChart data={trends} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                                <defs>
+                                    <linearGradient id="colorBorrows" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1}/>
+                                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                                    </linearGradient>
+                                    <linearGradient id="colorReturns" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
+                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                                    </linearGradient>
+                                </defs>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                                 <XAxis 
-                                    dataKey="_id" 
+                                    dataKey="label" 
                                     axisLine={false} 
                                     tickLine={false} 
                                     tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }} 
@@ -172,11 +189,28 @@ const StaffReportsPage = () => {
                                     tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }}
                                 />
                                 <Tooltip 
-                                    cursor={{ fill: '#f8fafc' }}
                                     contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', padding: '12px' }}
+                                    itemStyle={{ fontSize: '12px', fontWeight: 900, textTransform: 'uppercase' }}
                                 />
-                                <Bar dataKey="count" fill="#6366f1" radius={[8, 8, 0, 0]} barSize={40} />
-                            </BarChart>
+                                <Area 
+                                    type="monotone" 
+                                    dataKey="borrows" 
+                                    name="Mượn"
+                                    stroke="#6366f1" 
+                                    strokeWidth={4}
+                                    fillOpacity={1} 
+                                    fill="url(#colorBorrows)" 
+                                />
+                                <Area 
+                                    type="monotone" 
+                                    dataKey="returns" 
+                                    name="Trả"
+                                    stroke="#10b981" 
+                                    strokeWidth={4}
+                                    fillOpacity={1} 
+                                    fill="url(#colorReturns)" 
+                                />
+                            </AreaChart>
                         </ResponsiveContainer>
                     </div>
                 </div>
@@ -213,6 +247,84 @@ const StaffReportsPage = () => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Inventory Health Breakdown */}
+                <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                    <div className="flex items-center justify-between mb-8">
+                        <div>
+                            <h4 className="text-lg font-black text-slate-900 tracking-tight">Tình trạng Kho sách</h4>
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Phân bổ theo trạng thái vật lý</p>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        {[
+                            { label: 'Sẵn có', value: stats?.bookStats?.available || 0, color: 'bg-emerald-500', bg: 'bg-emerald-50', text: 'text-emerald-600' },
+                            { label: 'Đang mượn', value: stats?.bookStats?.borrowed || 0, color: 'bg-indigo-500', bg: 'bg-indigo-50', text: 'text-indigo-600' },
+                            { label: 'Hư hỏng', value: stats?.bookStats?.damaged || 0, color: 'bg-rose-500', bg: 'bg-rose-50', text: 'text-rose-600' },
+                            { label: 'Mất', value: stats?.bookStats?.lost || 0, color: 'bg-slate-500', bg: 'bg-slate-50', text: 'text-slate-600' },
+                        ].map((item, idx) => (
+                            <div key={idx} className={`${item.bg} p-6 rounded-3xl transition-all hover:scale-[1.02]`}>
+                                <p className={`text-[10px] font-black uppercase tracking-widest ${item.text} mb-2`}>{item.label}</p>
+                                <div className="flex items-end gap-2">
+                                    <h5 className={`text-2xl font-black ${item.text}`}>{item.value}</h5>
+                                    <span className="text-[10px] font-bold text-slate-400 mb-1">cuốn</span>
+                                </div>
+                                <div className="h-1 w-full bg-black/5 rounded-full mt-4 overflow-hidden">
+                                    <div 
+                                        className={`h-full ${item.color}`} 
+                                        style={{ width: `${(item.value / (stats?.bookStats?.total || 1)) * 100}%` }}
+                                    ></div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Fine Collection Analysis (New Widget) */}
+                <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                    <div className="flex items-center justify-between mb-8">
+                        <div>
+                            <h4 className="text-lg font-black text-slate-900 tracking-tight">Thu phí Phạt</h4>
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Sách hỏng & quá hạn</p>
+                        </div>
+                        <div className="px-3 py-1 bg-amber-100 text-amber-700 rounded-lg text-[10px] font-black uppercase">
+                            Tỷ lệ thu: {Math.round((( (stats?.borrowStats?.totalFines || 0) - (stats?.borrowStats?.unpaidFines || 0) ) / (stats?.borrowStats?.totalFines || 1)) * 100)}%
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-8">
+                         <div className="relative w-32 h-32 flex-shrink-0">
+                            <svg className="w-full h-full" viewBox="0 0 36 36">
+                                <circle cx="18" cy="18" r="16" fill="none" className="stroke-slate-100" strokeWidth="3" />
+                                <circle 
+                                    cx="18" cy="18" r="16" fill="none" 
+                                    className="stroke-amber-500 transition-all duration-1000" 
+                                    strokeWidth="3" 
+                                    strokeDasharray={`${(((stats?.borrowStats?.totalFines || 0) - (stats?.borrowStats?.unpaidFines || 0)) / (stats?.borrowStats?.totalFines || 1)) * 100} 100`} 
+                                    strokeLinecap="round" 
+                                    transform="rotate(-90 18 18)"
+                                />
+                            </svg>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                <span className="text-xl font-black text-slate-900">
+                                    {(((stats?.borrowStats?.totalFines || 0) - (stats?.borrowStats?.unpaidFines || 0)) / (stats?.borrowStats?.totalFines || 1) * 100).toFixed(0)}%
+                                </span>
+                            </div>
+                         </div>
+                         <div className="flex-1 space-y-4">
+                             <div>
+                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Đã thu hồi</p>
+                                 <h6 className="text-xl font-black text-emerald-600">{((stats?.borrowStats?.totalFines || 0) - (stats?.borrowStats?.unpaidFines || 0)).toLocaleString()} VNĐ</h6>
+                             </div>
+                             <div className="h-px bg-slate-50"></div>
+                             <div>
+                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Tổng nợ đọng</p>
+                                 <h6 className="text-xl font-black text-rose-600">{(stats?.borrowStats?.unpaidFines || 0).toLocaleString()} VNĐ</h6>
+                             </div>
+                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Recent Activity Log */}
                 <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
                     <div className="flex items-center justify-between mb-8">
@@ -220,32 +332,31 @@ const StaffReportsPage = () => {
                             <h4 className="text-lg font-black text-slate-900 tracking-tight">Lưu thông gần đây</h4>
                             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Thời gian thực</p>
                         </div>
-                        <button className="p-2 hover:bg-slate-50 rounded-xl transition-all">
-                            <MoreVertical size={18} className="text-slate-400" />
-                        </button>
                     </div>
                     <div className="space-y-6 relative before:absolute before:left-5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-50">
                         {activities.map((activity, idx) => (
                             <div key={idx} className="relative flex items-start gap-5 group">
                                 <div className={`relative z-10 w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-transform group-hover:scale-110 ${
-                                    activity.status === 'borrowed' ? 'bg-indigo-50 text-indigo-600' :
-                                    activity.status === 'returned' ? 'bg-emerald-50 text-emerald-600' :
-                                    activity.status === 'overdue' ? 'bg-rose-50 text-rose-600' : 'bg-slate-50 text-slate-400'
+                                    activity.type === 'alert' ? 'bg-rose-50 text-rose-600' :
+                                    activity.type === 'action' ? 'bg-indigo-50 text-indigo-600' :
+                                    activity.type === 'system' ? 'bg-amber-50 text-amber-600' : 'bg-slate-50 text-slate-400'
                                 }`}>
-                                    {activity.status === 'borrowed' ? <FileText size={18} /> :
-                                     activity.status === 'returned' ? <CheckCircle2 size={18} /> :
-                                     activity.status === 'overdue' ? <AlertCircle size={18} /> : <Calendar size={18} />}
+                                    {activity.type === 'alert' ? <AlertCircle size={18} /> :
+                                     activity.type === 'action' ? <FileText size={18} /> :
+                                     <Clock size={18} />}
                                 </div>
                                 <div className="flex-1">
                                     <div className="flex items-center justify-between">
                                         <p className="text-sm font-black text-slate-900">
-                                            {activity.status === 'borrowed' ? 'Phát sách mới' :
-                                             activity.status === 'returned' ? 'Thu hồi sách' :
-                                             activity.status === 'overdue' ? 'Phát hiện quá hạn' : 'Cập nhật trạng thái'}
+                                            {activity.action}
                                         </p>
-                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{new Date(activity.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                            {new Date(activity.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </span>
                                     </div>
-                                    <p className="text-xs font-bold text-slate-500 mt-0.5">{activity.readerId?.fullName} <span className="text-slate-300 mx-1">•</span> {activity.bookId?.title}</p>
+                                    <p className="text-xs font-bold text-slate-500 mt-0.5">
+                                        Thực hiện bởi: <span className="text-primary">{activity.user}</span>
+                                    </p>
                                 </div>
                             </div>
                         ))}
@@ -264,26 +375,39 @@ const StaffReportsPage = () => {
                         </div>
                     </div>
                     <div className="space-y-8 mt-10">
-                        <div className="relative h-4 w-full bg-slate-50 rounded-full overflow-hidden">
-                           <div className="absolute h-full bg-emerald-500 rounded-full shadow-lg shadow-emerald-500/20" style={{ width: '65%' }}></div>
-                           <div className="absolute h-full bg-rose-500 rounded-full left-[65%]" style={{ width: '35%' }}></div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-6">
-                            <div className="p-6 bg-slate-50 rounded-3xl">
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Đã thu hồi</p>
-                                <h5 className="text-2xl font-black text-slate-900">{(stats?.borrowStats?.totalFines - stats?.borrowStats?.unpaidFines || 0).toLocaleString()}đ</h5>
-                                <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 mt-2">
-                                    <CheckCircle2 size={12} /> Tăng 15% tháng này
-                                </div>
-                            </div>
-                            <div className="p-6 bg-slate-50 rounded-3xl">
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Cần thu thêm</p>
-                                <h5 className="text-2xl font-black text-slate-900">{(stats?.borrowStats?.unpaidFines || 0).toLocaleString()}đ</h5>
-                                <div className="flex items-center gap-1 text-[10px] font-bold text-rose-500 mt-2">
-                                    <Clock size={12} /> Đang cập nhật 
-                                </div>
-                            </div>
-                        </div>
+                        {stats?.borrowStats?.totalFines > 0 ? (
+                           <>
+                              <div className="relative h-4 w-full bg-slate-50 rounded-full overflow-hidden">
+                                 <div 
+                                    className="absolute h-full bg-emerald-500 rounded-full shadow-lg shadow-emerald-500/20 transition-all duration-1000" 
+                                    style={{ width: `${Math.round(((stats.borrowStats.totalFines - stats.borrowStats.unpaidFines) / stats.borrowStats.totalFines) * 100)}%` }}
+                                 ></div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-6">
+                                  <div className="p-6 bg-slate-50 rounded-3xl">
+                                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Đã thu hồi</p>
+                                      <h5 className="text-2xl font-black text-slate-900">{(stats?.borrowStats?.totalFines - stats?.borrowStats?.unpaidFines || 0).toLocaleString()}đ</h5>
+                                      <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 mt-2">
+                                          <CheckCircle2 size={12} /> {Math.round(((stats.borrowStats.totalFines - stats.borrowStats.unpaidFines) / stats.borrowStats.totalFines) * 100)}% hoàn tất
+                                      </div>
+                                  </div>
+                                  <div className="p-6 bg-slate-50 rounded-3xl">
+                                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Cần thu thêm</p>
+                                      <h5 className="text-2xl font-black text-slate-900">{(stats?.borrowStats?.unpaidFines || 0).toLocaleString()}đ</h5>
+                                      <div className="flex items-center gap-1 text-[10px] font-bold text-rose-500 mt-2">
+                                          <Clock size={12} /> {Math.round((stats.borrowStats.unpaidFines / stats.borrowStats.totalFines) * 100)}% tồn đọng
+                                      </div>
+                                  </div>
+                              </div>
+                           </>
+                        ) : (
+                           <div className="py-20 text-center space-y-4 bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-100">
+                               <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto text-slate-200">
+                                  <TrendingUp size={32} />
+                               </div>
+                               <p className="text-xs font-black text-slate-300 uppercase tracking-[0.2em]">Chưa có dữ liệu phí phạt</p>
+                           </div>
+                        )}
                     </div>
                 </div>
             </div>
