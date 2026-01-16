@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { 
-  Users, 
-  BookOpen, 
-  ClipboardList, 
-  AlertCircle, 
-  TrendingUp, 
+import {
+  Users,
+  BookOpen,
+  ClipboardList,
+  AlertCircle,
+  TrendingUp,
   Clock,
   ArrowRight,
   Book,
@@ -72,7 +72,7 @@ const DashboardPage = () => {
     const now = new Date();
     const diffMs = now - date;
     const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMins / 60) ;
+    const diffHours = Math.floor(diffMins / 60);
     const diffDays = Math.floor(diffHours / 24);
 
     if (diffMins < 1) return "Vừa xong";
@@ -114,7 +114,7 @@ const DashboardPage = () => {
         </div>
         <div className="flex flex-wrap gap-2">
           {quickActions.map((action, i) => (
-            <button 
+            <button
               key={i}
               onClick={() => navigate(action.path)}
               className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 rounded-2xl text-sm font-bold text-gray-700 hover:bg-gray-50 hover:border-gray-300 hover:shadow-sm transition-all active:scale-95"
@@ -149,10 +149,10 @@ const DashboardPage = () => {
 
       {/* Dashboard Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
+
         {/* Left Column: Management & Alerts */}
         <div className="lg:col-span-2 space-y-8">
-          
+
           {/* Alerts Section */}
           <div className="space-y-4">
             {stats.overdueBorrows > 0 && (
@@ -162,14 +162,14 @@ const DashboardPage = () => {
                 </div>
                 <div className="relative">
                   <h4 className="text-xl font-bold flex items-center gap-2">
-                    <AlertCircle size={24} /> 
+                    <AlertCircle size={24} />
                     Cảnh báo Quá hạn
                   </h4>
                   <p className="text-white/80 text-sm mt-1 font-medium italic">
-                    Hiện đang có <span className="text-white font-black underline">{stats.overdueBorrows} cuốn sách</span> đã quá hạn trả. 
+                    Hiện đang có <span className="text-white font-black underline">{stats.overdueBorrows} cuốn sách</span> đã quá hạn trả.
                   </p>
                   <div className="flex gap-4 mt-6">
-                    <button 
+                    <button
                       onClick={() => navigate('/borrows?status=overdue')}
                       className="px-4 py-2 bg-white text-rose-600 rounded-xl font-bold text-xs hover:bg-rose-50 transition-colors"
                     >
@@ -179,7 +179,7 @@ const DashboardPage = () => {
                 </div>
                 <div className="hidden sm:block">
                   <div className="w-20 h-20 rounded-full border-4 border-white/20 flex items-center justify-center">
-                      <span className="text-2xl font-black">{stats.overdueBorrows}</span>
+                    <span className="text-2xl font-black">{stats.overdueBorrows}</span>
                   </div>
                 </div>
               </div>
@@ -192,14 +192,14 @@ const DashboardPage = () => {
                 </div>
                 <div className="relative">
                   <h4 className="text-xl font-bold flex items-center gap-2">
-                    <Clock size={24} /> 
+                    <Clock size={24} />
                     Yêu cầu Chờ duyệt
                   </h4>
                   <p className="text-white/80 text-sm mt-1 font-medium italic">
                     Có <span className="text-white font-black underline">{stats.pendingRequests} lượt mượn</span> đang chờ bạn phê duyệt.
                   </p>
                   <div className="flex gap-4 mt-6">
-                    <button 
+                    <button
                       onClick={() => navigate('/borrows?status=pending')}
                       className="px-4 py-2 bg-white text-orange-600 rounded-xl font-bold text-xs hover:bg-orange-50 transition-colors"
                     >
@@ -209,7 +209,7 @@ const DashboardPage = () => {
                 </div>
                 <div className="hidden sm:block">
                   <div className="w-20 h-20 rounded-full border-4 border-white/20 flex items-center justify-center">
-                      <span className="text-2xl font-black">{stats.pendingRequests}</span>
+                    <span className="text-2xl font-black">{stats.pendingRequests}</span>
                   </div>
                 </div>
               </div>
@@ -230,10 +230,9 @@ const DashboardPage = () => {
             <div className="p-2">
               {recentActivities.map((activity, i) => (
                 <div key={activity.id} className="group p-6 flex gap-6 hover:bg-gray-50 rounded-2xl transition-all cursor-pointer">
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
-                    activity.type === 'system' ? 'bg-blue-50 text-blue-600' : 
-                    activity.type === 'alert' ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'
-                  }`}>
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${activity.type === 'system' ? 'bg-blue-50 text-blue-600' :
+                      activity.type === 'alert' ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'
+                    }`}>
                     {activity.type === 'system' ? <Clock size={20} /> : activity.type === 'alert' ? <AlertCircle size={20} /> : <CheckCircle2 size={20} />}
                   </div>
                   <div className="flex-1">
@@ -251,7 +250,7 @@ const DashboardPage = () => {
 
         {/* Right Column: Analytics & Top Readers */}
         <div className="space-y-8">
-          
+
           {/* Top Readers Card */}
           <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden h-full flex flex-col">
             <div className="px-8 py-6 border-b border-gray-50">
@@ -280,20 +279,20 @@ const DashboardPage = () => {
                   </div>
                 ))}
               </div>
-              
+
               <div className="mt-8 bg-gray-900 rounded-2xl p-6 text-white relative overflow-hidden">
                 <div className="absolute right-0 top-0 opacity-10 rotate-12">
-                   <BookOpen size={100} />
+                  <BookOpen size={100} />
                 </div>
                 <h5 className="text-sm font-bold text-primary-light mb-2">Tư duy Quản trị</h5>
                 <p className="text-xs text-gray-400 leading-relaxed italic pr-2">
                   "Sự tích cực của độc giả là chỉ số quan trọng nhất đánh giá hiệu quả hoạt động của thư viện."
                 </p>
                 <div className="mt-4 flex justify-between items-center border-t border-white/10 pt-4">
-                   <span className="text-[10px] font-black text-gray-500 uppercase">Tỷ lệ tăng trưởng</span>
-                   <span className="text-xs font-black text-emerald-400 flex items-center gap-1">
-                      <ArrowUpRight size={14} /> 12.5%
-                   </span>
+                  <span className="text-[10px] font-black text-gray-500 uppercase">Tỷ lệ tăng trưởng</span>
+                  <span className="text-xs font-black text-emerald-400 flex items-center gap-1">
+                    <ArrowUpRight size={14} /> 12.5%
+                  </span>
                 </div>
               </div>
             </div>

@@ -6,11 +6,14 @@ class ReaderService extends BaseService {
   }
 
   async getAllReaders(filter = {}, options = {}) {
-    const { status, membershipType, search } = filter;
+    const { status, membershipType, search, hasDebt } = filter;
 
     const query = {};
     if (status) query.status = status;
     if (membershipType) query.membershipType = membershipType;
+    if (hasDebt === 'true' || hasDebt === true) {
+      query.unpaidViolations = { $gt: 0 };
+    }
     if (search) {
       query.$or = [
         { fullName: { $regex: search, $options: 'i' } },

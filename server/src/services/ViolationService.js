@@ -7,10 +7,18 @@ class ViolationService extends BaseService {
   }
 
   async createViolation(data) {
+    // Ensure amount is a valid number
+    if (isNaN(data.amount) || data.amount < 0) {
+      data.amount = 0;
+    }
+    
+    // Default status if not provided
+    if (!data.status) data.status = 'chưa thanh toán';
+    
     const violation = await this.repository.create(data);
     
-    // Update reader's total unpaid violations (default is unpaid if not specified)
-    if (!data.status || data.status === 'unpaid') {
+    // Update reader's total unpaid violations
+    if (data.amount > 0 && (data.status === 'unpaid' || data.status === 'chưa thanh toán')) {
       await this.readerService.updateUnpaidViolations(data.readerId, data.amount);
     }
     
@@ -20,11 +28,14 @@ class ViolationService extends BaseService {
   async payViolation(violationId, staffId) {
     const violation = await this.repository.findById(violationId);
     if (!violation) throw new Error('Violation record not found');
-    if (violation.status === 'paid') throw new Error('Violation already paid');
+    if (violation.status === 'paid' || violation.status === 'đã thanh toán') {
+      throw new Error('Violation already paid');
+    }
 
     const updatedViolation = await this.repository.update(violationId, {
-      status: 'paid',
-      paidDate: new Date()
+      status: 'đã thanh toán',
+      paidAt: new Date(),
+      staffId
     });
 
     // Reduce reader's total unpaid violations
@@ -47,13 +58,16 @@ class ViolationService extends BaseService {
       if (violation.amount <= remainingToPay) {
         remainingToPay -= violation.amount;
         await this.repository.update(violation._id, {
-          status: 'paid',
-          paidDate: new Date()
+          status: 'đã thanh toán',
+          paidAt: new Date()
         });
       } else {
         // Partial pay
         const newAmount = violation.amount - remainingToPay;
-        await this.repository.update(violation._id, { amount: newAmount });
+        await this.repository.update(violation._id, { 
+          amount: newAmount,
+          description: (violation.description || "") + ` (Đã thanh toán một phần: ${remainingToPay}đ)`
+        });
         remainingToPay = 0;
       }
     }

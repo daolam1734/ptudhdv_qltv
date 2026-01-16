@@ -15,9 +15,11 @@ import {
   Info,
   CheckCircle2,
   AlertCircle,
-  XCircle
+  XCircle,
+  FileText
 } from "lucide-react";
 import ConfirmModal from "../../components/common/ConfirmModal";
+import BorrowSlipModal from "../../components/common/BorrowSlipModal";
 
 const ReaderHistoryPage = () => {
   const [history, setHistory] = useState([]);
@@ -27,6 +29,8 @@ const ReaderHistoryPage = () => {
   const [msg, setMsg] = useState({ type: "", text: "" });
   const [renewingItem, setRenewingItem] = useState(null);
   const [cancellingItem, setCancellingItem] = useState(null);
+  const [selectedBorrow, setSelectedBorrow] = useState(null);
+  const [showSlipModal, setShowSlipModal] = useState(false);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -73,7 +77,19 @@ const ReaderHistoryPage = () => {
   const filteredHistory = history.filter(item => {
     const matchesSearch = item.bookId?.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item._id.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || item.status === statusFilter;
+    
+    // Status filter mapping for bilingual support
+    let matchesStatus = statusFilter === "all";
+    if (!matchesStatus) {
+      if (statusFilter === "pending") matchesStatus = ["pending", "đang chờ"].includes(item.status);
+      else if (statusFilter === "approved") matchesStatus = ["approved", "đã duyệt"].includes(item.status);
+      else if (statusFilter === "borrowed") matchesStatus = ["borrowed", "đang mượn"].includes(item.status);
+      else if (statusFilter === "overdue") matchesStatus = ["overdue", "quá hạn"].includes(item.status);
+      else if (statusFilter === "returned") matchesStatus = ["returned", "đã trả"].includes(item.status);
+      else if (statusFilter === "rejected") matchesStatus = ["rejected", "từ chối"].includes(item.status);
+      else matchesStatus = item.status === statusFilter;
+    }
+    
     return matchesSearch && matchesStatus;
   });
 
@@ -88,7 +104,18 @@ const ReaderHistoryPage = () => {
       cancelled: { bg: "bg-slate-100", text: "text-slate-500", border: "border-slate-200", label: "Đã hủy" },
       lost: { bg: "bg-gray-900", text: "text-white", border: "border-gray-900", label: "Mất sách" },
       damaged: { bg: "bg-amber-50", text: "text-amber-600", border: "border-amber-100", label: "Hư hỏng nhẹ" },
-      damaged_heavy: { bg: "bg-rose-50", text: "text-rose-600", border: "border-rose-100", label: "Hư hỏng nặng" }
+      damaged_heavy: { bg: "bg-rose-50", text: "text-rose-600", border: "border-rose-100", label: "Hư hỏng nặng" },
+      'đang chờ': { bg: "bg-amber-50", text: "text-amber-600", border: "border-amber-100", label: "Chờ duyệt" },
+      'đã duyệt': { bg: "bg-indigo-50", text: "text-indigo-600", border: "border-indigo-100", label: "Vui lòng đến lấy sách" },
+      'đang mượn': { bg: "bg-blue-50", text: "text-blue-600", border: "border-blue-100", label: "Đang mượn" },
+      'quá hạn': { bg: "bg-rose-50", text: "text-rose-600", border: "border-rose-100", label: "Quá hạn" },
+      'đã trả': { bg: "bg-emerald-50", text: "text-emerald-600", border: "border-emerald-100", label: "Đã trả" },
+      'đã trả (vi phạm)': { bg: "bg-amber-50", text: "text-amber-600", border: "border-amber-100", label: "Đã trả (Có vi phạm)" },
+      'từ chối': { bg: "bg-gray-100", text: "text-gray-500", border: "border-gray-200", label: "Bị từ chối" },
+      'đã hủy': { bg: "bg-slate-100", text: "text-slate-500", border: "border-slate-200", label: "Đã hủy" },
+      'làm mất': { bg: "bg-gray-900", text: "text-white", border: "border-gray-900", label: "Mất sách" },
+      'hư hỏng': { bg: "bg-amber-50", text: "text-amber-600", border: "border-amber-100", label: "Hư hỏng nhẹ" },
+      'hư hỏng nặng': { bg: "bg-rose-50", text: "text-rose-600", border: "border-rose-100", label: "Hư hỏng nặng" }
     };
     const style = map[status] || map.returned;
     return (
@@ -98,10 +125,14 @@ const ReaderHistoryPage = () => {
     );
   };
 
+  const isActive = (status) => ['borrowed', 'overdue', 'pending', 'approved', 'đang mượn', 'quá hạn', 'đang chờ', 'đã duyệt'].includes(status);
+  
+  const isReturned = (status) => ['returned', 'đã trả', 'đã trả (vi phạm)', 'lost', 'làm mất', 'hư hỏng', 'hư hỏng nặng'].includes(status);
+
   const stats = {
     total: history.length,
-    active: history.filter(h => h.status === 'borrowed' || h.status === 'overdue' || h.status === 'pending' || h.status === 'approved').length,
-    returned: history.filter(h => h.status === 'returned').length
+    active: history.filter(h => isActive(h.status)).length,
+    returned: history.filter(h => h.status === 'returned' || h.status === 'đã trả' || h.status === 'đã trả (vi phạm)').length
   };
 
   return (
@@ -187,6 +218,7 @@ const ReaderHistoryPage = () => {
             <option value="borrowed">Đang mượn</option>
             <option value="overdue">Quá hạn</option>
             <option value="returned">Đã trả</option>
+            <option value="đã trả (vi phạm)">Đã trả (Vi phạm)</option>
             <option value="rejected">Bị từ chối</option>
           </select>
           <Filter className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
@@ -232,7 +264,7 @@ const ReaderHistoryPage = () => {
                       </Link>
                     </td>
                     <td className="px-8 py-6">
-                      {(item.status === 'pending' || item.status === 'approved' || item.status === 'rejected') ? (
+                      {(['pending', 'approved', 'rejected', 'đang chờ', 'đã duyệt', 'từ chối', 'đã hủy'].includes(item.status)) ? (
                         <p className="text-[10px] font-black uppercase text-gray-300 tracking-widest italic">Đang xử lý...</p>
                       ) : (
                         <div className="space-y-1.5 min-w-[140px]">
@@ -240,7 +272,7 @@ const ReaderHistoryPage = () => {
                             <Calendar size={12} className="text-gray-300" />
                             <span>Mượn: {new Date(item.borrowDate).toLocaleDateString("vi-VN")}</span>
                           </div>
-                          <div className={`flex items-center gap-2 text-[10px] font-bold uppercase ${item.status === 'overdue' ? 'text-rose-500' : 'text-primary'}`}>
+                          <div className={`flex items-center gap-2 text-[10px] font-bold uppercase ${(item.status === 'overdue' || item.status === 'quá hạn') ? 'text-rose-500' : 'text-primary'}`}>
                             <Clock size={12} />
                             <span>Hạn: {new Date(item.dueDate).toLocaleDateString("vi-VN")}</span>
                           </div>
@@ -248,17 +280,35 @@ const ReaderHistoryPage = () => {
                       )}
                     </td>
                     <td className="px-8 py-6 text-center">
-                      <div className="flex flex-col items-center gap-1">
+                      <div className="flex flex-col items-center gap-2">
                         {getStatusBadge(item.status)}
                         {item.renewalCount > 0 && (
                           <span className="text-[10px] font-black text-primary bg-primary/5 px-2 py-0.5 rounded-md">
                             Đã gia hạn {item.renewalCount} lần
                           </span>
                         )}
+                        {item.violation && item.violation.amount > 0 && (
+                          <div className="flex flex-col items-center gap-0.5 animate-in fade-in slide-in-from-top-1 duration-300">
+                             <div className="flex items-center gap-1 text-[10px] font-bold text-rose-600 bg-rose-50 px-2 py-1 rounded-md border border-rose-100 shadow-sm shadow-rose-50">
+                                <AlertCircle size={10} strokeWidth={3} />
+                                {item.violation.amount.toLocaleString()}đ
+                             </div>
+                             <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tight italic">
+                                {item.violation.reason}
+                             </span>
+                          </div>
+                        )}
                       </div>
                     </td>
-                    <td className="px-8 py-6 text-right pr-8">
-                      {item.status === 'borrowed' && (
+                    <td className="px-8 py-6 text-right pr-8 flex justify-end gap-3">
+                      <button
+                        onClick={() => { setSelectedBorrow(item); setShowSlipModal(true); }}
+                        className="inline-flex items-center gap-2 px-5 py-3 bg-neutral-light text-gray-500 hover:bg-primary hover:text-white rounded-2xl transition-all text-xs font-black border border-gray-100 shadow-sm active:scale-95"
+                      >
+                        <FileText size={16} strokeWidth={3} /> Chi tiết
+                      </button>
+
+                      {(item.status === 'borrowed' || item.status === 'đang mượn') && (
                         <button
                           onClick={() => setRenewingItem(item)}
                           disabled={item.renewalCount >= 2 || new Date() > new Date(item.dueDate)}
@@ -268,8 +318,8 @@ const ReaderHistoryPage = () => {
                           <RotateCcw size={16} strokeWidth={3} /> Gia hạn thêm
                         </button>
                       )}
-                      
-                      {item.status === 'pending' && (
+
+                      {(item.status === 'pending' || item.status === 'đang chờ') && (
                         <button
                           onClick={() => setCancellingItem(item)}
                           className="inline-flex items-center gap-2 px-6 py-3 bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white rounded-2xl transition-all text-xs font-black border border-rose-100 shadow-sm active:scale-95"
@@ -337,6 +387,12 @@ const ReaderHistoryPage = () => {
         message={`Bạn có chắc chắn muốn hủy yêu cầu mượn cuốn sách "${cancellingItem?.bookId?.title}" không? Hành động này không thể hoàn tác.`}
         confirmText="Xác nhận hủy"
         confirmColor="bg-rose-600"
+      />
+
+      <BorrowSlipModal
+        isOpen={showSlipModal}
+        onClose={() => { setShowSlipModal(false); setSelectedBorrow(null); }}
+        borrow={selectedBorrow}
       />
     </div>
   );

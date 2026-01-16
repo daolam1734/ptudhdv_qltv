@@ -17,8 +17,8 @@ module.exports = (borrowController) => {
   // Create borrow (can be initiated by reader or staff)
   router.post("/", restrictTo("reader", "librarian", "admin"), borrowValidator, validate, borrowController.createBorrow);
   
-  // Reader cancellation
-  router.post("/:id/cancel", restrictTo("reader"), borrowController.cancelBorrow);
+  // Cancellation (Reader cancels own, or Staff cancels on behalf)
+  router.post("/:id/cancel", restrictTo("reader", "librarian", "admin"), borrowController.cancelBorrow);
 
   // Staff/Admin paths
   router.use(restrictTo("librarian", "admin"));

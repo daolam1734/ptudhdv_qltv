@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import borrowService from '../services/borrowService';
-import { 
-  Book, 
-  Users, 
+import {
+  Book,
+  Users,
   User,
-  ClipboardList, 
-  LogOut, 
+  ClipboardList,
+  LogOut,
   LayoutDashboard,
   Library,
   CreditCard,
@@ -130,11 +130,10 @@ const StaffLayout = ({ children }) => {
                 key={item.path}
                 to={item.path}
                 title={item.label}
-                className={`group relative flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-300 ${
-                  isActive 
-                    ? "bg-primary text-white shadow-lg shadow-primary/20 translate-x-1" 
+                className={`group relative flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-300 ${isActive
+                    ? "bg-primary text-white shadow-lg shadow-primary/20 translate-x-1"
                     : "text-slate-500 hover:bg-slate-50 hover:text-primary"
-                }`}
+                  }`}
               >
                 <span className={`${isActive ? "text-white" : "text-slate-400 group-hover:text-primary transition-colors"} shrink-0`}>
                   {React.cloneElement(item.icon, { size: 22, strokeWidth: isActive ? 2.5 : 2 })}
@@ -162,13 +161,13 @@ const StaffLayout = ({ children }) => {
               <div className="min-w-0 flex-1 animate-in fade-in duration-500">
                 <p className="text-sm font-black text-slate-900 truncate tracking-tight">{user?.fullName}</p>
                 <div className="flex items-center gap-1.5">
-                   <ShieldCheck size={12} className="text-primary" />
-                   <p className="text-[10px] font-black text-primary uppercase tracking-widest">{user?.role}</p>
+                  <ShieldCheck size={12} className="text-primary" />
+                  <p className="text-[10px] font-black text-primary uppercase tracking-widest">{user?.role}</p>
                 </div>
               </div>
             )}
           </div>
-          <button 
+          <button
             onClick={handleLogout}
             className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-rose-500 hover:bg-rose-50 transition-all duration-300 group ${!isSidebarOpen && "justify-center"}`}
           >
@@ -182,8 +181,8 @@ const StaffLayout = ({ children }) => {
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="h-24 bg-white/80 backdrop-blur-xl border-b border-slate-200 flex items-center justify-between px-10 shrink-0 sticky top-0 z-40">
           <div className="flex items-center gap-8">
-            <button 
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
+            <button
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
               className="w-12 h-12 flex items-center justify-center hover:bg-slate-50 rounded-2xl text-slate-400 hover:text-primary transition-all active:scale-90"
             >
               <Menu size={26} />
@@ -200,14 +199,14 @@ const StaffLayout = ({ children }) => {
           <div className="flex items-center gap-4">
             <div className="relative hidden xl:block w-96 group">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" size={20} />
-              <input 
-                type="text" 
-                placeholder="Tìm kiếm tài liệu, độc giả..." 
+              <input
+                type="text"
+                placeholder="Tìm kiếm tài liệu, độc giả..."
                 className="w-full pl-12 pr-6 py-3.5 bg-slate-50 border border-transparent rounded-[1.25rem] text-sm font-bold focus:bg-white focus:border-primary/20 focus:ring-4 focus:ring-primary/5 outline-none transition-all placeholder:text-slate-400"
               />
             </div>
             <div className="relative">
-              <button 
+              <button
                 onClick={() => setShowNotifications(!showNotifications)}
                 className={`w-12 h-12 flex items-center justify-center rounded-2xl relative transition-all group ${showNotifications ? 'bg-primary/10 text-primary' : 'text-slate-400 hover:text-primary hover:bg-slate-50'}`}
               >
@@ -228,46 +227,45 @@ const StaffLayout = ({ children }) => {
                       </div>
                       <span className="bg-primary/10 text-primary text-[10px] font-black px-3 py-1 rounded-full">{notifications.length} tin mới</span>
                     </div>
-                    
+
                     <div className="max-h-[400px] overflow-y-auto px-4 space-y-2">
-                       {notifications.map((notif) => (
-                         <div 
-                           key={notif.id} 
-                           className="p-4 rounded-3xl hover:bg-slate-50 transition-all flex gap-4 items-start group cursor-pointer border border-transparent hover:border-slate-100"
-                           onClick={() => {
-                             if (notif.id === 'pending') navigate('/borrows?status=pending');
-                             if (notif.id === 'overdue') navigate('/borrows?status=overdue');
-                             setShowNotifications(false);
-                           }}
-                         >
-                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm ${
-                              notif.type === 'error' ? 'bg-rose-50 text-rose-500 ring-4 ring-rose-500/5' :
-                              notif.type === 'warning' ? 'bg-amber-50 text-amber-500 ring-4 ring-amber-500/5' : 
-                              'bg-emerald-50 text-emerald-500 ring-4 ring-emerald-500/5'
+                      {notifications.map((notif) => (
+                        <div
+                          key={notif.id}
+                          className="p-4 rounded-3xl hover:bg-slate-50 transition-all flex gap-4 items-start group cursor-pointer border border-transparent hover:border-slate-100"
+                          onClick={() => {
+                            if (notif.id === 'pending') navigate('/borrows?status=pending');
+                            if (notif.id === 'overdue') navigate('/borrows?status=overdue');
+                            setShowNotifications(false);
+                          }}
+                        >
+                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 shadow-sm ${notif.type === 'error' ? 'bg-rose-50 text-rose-500 ring-4 ring-rose-500/5' :
+                              notif.type === 'warning' ? 'bg-amber-50 text-amber-500 ring-4 ring-amber-500/5' :
+                                'bg-emerald-50 text-emerald-500 ring-4 ring-emerald-500/5'
                             }`}>
-                              {notif.icon}
+                            {notif.icon}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex justify-between items-start mb-1">
+                              <p className="text-xs font-black text-slate-900 group-hover:text-primary transition-colors">{notif.title}</p>
+                              <span className="text-[9px] text-slate-300 font-black uppercase tracking-tighter">{notif.time}</span>
                             </div>
-                            <div className="flex-1 min-w-0">
-                               <div className="flex justify-between items-start mb-1">
-                                 <p className="text-xs font-black text-slate-900 group-hover:text-primary transition-colors">{notif.title}</p>
-                                 <span className="text-[9px] text-slate-300 font-black uppercase tracking-tighter">{notif.time}</span>
-                               </div>
-                               <p className="text-[11px] text-slate-500 font-bold leading-relaxed">{notif.description}</p>
-                            </div>
-                         </div>
-                       ))}
+                            <p className="text-[11px] text-slate-500 font-bold leading-relaxed">{notif.description}</p>
+                          </div>
+                        </div>
+                      ))}
                     </div>
 
                     <div className="px-8 mt-6 pt-6 border-t border-slate-50">
-                       <button 
-                         onClick={() => {
-                           navigate('/borrows');
-                           setShowNotifications(false);
-                         }}
-                         className="w-full py-4 rounded-2xl bg-slate-50 text-slate-600 text-[10px] font-black uppercase tracking-[0.2em] hover:bg-primary hover:text-white transition-all shadow-sm"
-                       >
-                         Xem tất cả yêu cầu
-                       </button>
+                      <button
+                        onClick={() => {
+                          navigate('/borrows');
+                          setShowNotifications(false);
+                        }}
+                        className="w-full py-4 rounded-2xl bg-slate-50 text-slate-600 text-[10px] font-black uppercase tracking-[0.2em] hover:bg-primary hover:text-white transition-all shadow-sm"
+                      >
+                        Xem tất cả yêu cầu
+                      </button>
                     </div>
                   </div>
                 </>

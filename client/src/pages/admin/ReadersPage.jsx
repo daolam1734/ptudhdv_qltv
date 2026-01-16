@@ -563,8 +563,8 @@ const ReadersPage = () => {
                         </div>
                         <div className="text-right">
                           <span className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${item.status === 'borrowed' ? 'bg-blue-50 text-blue-600' :
-                              item.status === 'overdue' ? 'bg-red-50 text-red-600' :
-                                item.status === 'returned' ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-600'
+                            item.status === 'overdue' ? 'bg-red-50 text-red-600' :
+                              item.status === 'returned' ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-600'
                             }`}>
                             {item.status}
                           </span>

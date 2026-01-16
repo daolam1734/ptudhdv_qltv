@@ -458,8 +458,8 @@ const ReportsPage = () => {
               {topReaders.map((reader, i) => (
                 <div key={reader._id} className="flex items-center gap-4 group">
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black ${i === 0 ? "bg-amber-100 text-amber-700 shadow-lg shadow-amber-100" :
-                      i === 1 ? "bg-slate-100 text-slate-700" :
-                        i === 2 ? "bg-orange-50 text-orange-700" : "bg-gray-50 text-gray-400"
+                    i === 1 ? "bg-slate-100 text-slate-700" :
+                      i === 2 ? "bg-orange-50 text-orange-700" : "bg-gray-50 text-gray-400"
                     }`}>
                     #{i + 1}
                   </div>
@@ -492,12 +492,12 @@ const ReportsPage = () => {
                 {activities.map((activity) => (
                   <div key={activity.id} className="relative pl-6 border-l border-white/10 pb-1 last:pb-0">
                     <div className={`absolute -left-1 top-0 w-2 h-2 rounded-full ring-4 ring-gray-900 shadow-xl ${activity.type === 'alert' ? 'bg-rose-500' :
-                        activity.type === 'system' ? 'bg-blue-400' : 'bg-primary'
+                      activity.type === 'system' ? 'bg-blue-400' : 'bg-primary'
                       }`}></div>
                     <div className="space-y-1">
                       <p className="text-xs font-bold leading-relaxed">
                         <span className={`${activity.type === 'alert' ? 'text-rose-400' :
-                            activity.type === 'system' ? 'text-blue-400' : 'text-primary'
+                          activity.type === 'system' ? 'text-blue-400' : 'text-primary'
                           } font-black`}>{activity.user}</span> {activity.action}
                       </p>
                       <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">

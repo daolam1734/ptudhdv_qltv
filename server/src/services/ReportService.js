@@ -6,11 +6,11 @@ class ReportService {
       {
         $facet: {
           totalBorrowedCount: [
-            { $match: { status: { $in: ['borrowed', 'overdue'] } } },
+            { $match: { status: { $in: ['borrowed', 'overdue', 'đang mượn', 'quá hạn'] } } },
             { $count: 'count' }
           ],
           byCategory: [
-            { $match: { status: { $in: ['borrowed', 'overdue'] } } },
+            { $match: { status: { $in: ['borrowed', 'overdue', 'đang mượn', 'quá hạn'] } } },
             {
               $lookup: {
                 from: 'books',
@@ -81,7 +81,7 @@ class ReportService {
           activeBorrows: { 
             $sum: { 
               $cond: [
-                { $in: ['$status', ['borrowed', 'overdue']] }, 
+                { $in: ['$status', ['borrowed', 'overdue', 'đang mượn', 'quá hạn']] }, 
                 1, 0
               ] 
             } 
@@ -89,7 +89,7 @@ class ReportService {
           pendingRequests: { 
             $sum: { 
               $cond: [
-                { $in: ['$status', ['pending', 'approved']] }, 
+                { $in: ['$status', ['pending', 'approved', 'đang chờ', 'đã duyệt']] }, 
                 1, 0
               ] 
             } 
@@ -99,10 +99,10 @@ class ReportService {
               $cond: [
                 { 
                   $or: [
-                    { $eq: ['$status', 'overdue'] },
+                    { $in: ['$status', ['overdue', 'quá hạn']] },
                     { 
                       $and: [
-                        { $eq: ['$status', 'borrowed'] },
+                        { $in: ['$status', ['borrowed', 'đang mượn']] },
                         { $lt: ['$dueDate', now] }
                       ]
                     }
@@ -112,8 +112,8 @@ class ReportService {
               ] 
             } 
           },
-          damaged: { $sum: { $cond: [{ $in: ['$status', ['damaged', 'damaged_heavy']] }, 1, 0] } },
-          lost: { $sum: { $cond: [{ $eq: ['$status', 'lost'] }, 1, 0] } },
+          damaged: { $sum: { $cond: [{ $in: ['$status', ['damaged', 'damaged_heavy', 'hư hỏng', 'hư hỏng nặng']] }, 1, 0] } },
+          lost: { $sum: { $cond: [{ $in: ['$status', ['lost', 'làm mất']] }, 1, 0] } },
           totalViolationAmount: { $sum: '$violation.amount' },
           unpaidViolationAmount: {
             $sum: {
@@ -160,7 +160,7 @@ class ReportService {
           totalBorrows: { $sum: 1 },
           activeBorrows: {
             $sum: {
-              $cond: [{ $in: ['$status', ['borrowed', 'overdue']] }, 1, 0]
+              $cond: [{ $in: ['$status', ['borrowed', 'overdue', 'đang mượn', 'quá hạn']] }, 1, 0]
             }
           }
         }
@@ -248,35 +248,45 @@ class ReportService {
 
       switch (activity.status) {
         case 'pending':
+        case 'đang chờ':
           actionText = `Yêu cầu mượn: ${activity.bookId?.title}`;
           type = 'system';
           break;
         case 'borrowed':
+        case 'đang mượn':
           actionText = `Đã nhận sách: ${activity.bookId?.title}`;
           type = 'action';
           break;
         case 'approved':
+        case 'đã duyệt':
           actionText = `Yêu cầu được chấp nhận: ${activity.bookId?.title}`;
           type = 'system';
           break;
         case 'returned':
+        case 'đã trả':
           actionText = `Đã trả sách: ${activity.bookId?.title}`;
           type = 'action';
           break;
         case 'overdue':
+        case 'quá hạn':
           actionText = `Quá hạn: ${activity.bookId?.title}`;
           type = 'alert';
           break;
         case 'lost':
+        case 'làm mất':
           actionText = `Mất sách: ${activity.bookId?.title}`;
           type = 'alert';
           break;
         case 'damaged':
         case 'damaged_heavy':
+        case 'hư hỏng':
+        case 'hư hỏng nặng':
           actionText = `Trả sách hỏng: ${activity.bookId?.title}`;
           type = 'alert';
           break;
         case 'rejected':
+        case 'từ chối':
+        case 'đã hủy':
           actionText = `Từ chối mượn: ${activity.bookId?.title}`;
           type = 'system';
           break;

@@ -18,6 +18,7 @@ module.exports = (violationController) => {
   router.get('/', violationController.getAllViolations);
   router.get('/reader/:readerId', violationController.getReaderViolations);
   router.post('/:violationId/pay', payViolationValidator, validate, violationController.payViolation);
+  router.post('/', restrictTo('librarian', 'admin'), violationController.createViolation);
 
   return router;
 };

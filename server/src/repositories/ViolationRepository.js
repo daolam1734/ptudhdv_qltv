@@ -10,7 +10,10 @@ class ViolationRepository extends BaseRepository {
   }
 
   async findUnpaidByReader(readerId) {
-    return await this.model.find({ readerId, status: 'unpaid' });
+    return await this.model.find({ 
+      readerId, 
+      status: { $in: ['unpaid', 'chưa thanh toán'] } 
+    });
   }
 }
 

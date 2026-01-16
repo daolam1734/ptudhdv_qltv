@@ -29,8 +29,8 @@ const borrowSchema = new mongoose.Schema(
         },
         status: {
             type: String,
-            enum: ['pending', 'approved', 'borrowed', 'returned', 'overdue', 'lost', 'damaged', 'damaged_heavy', 'rejected', 'cancelled'],
-            default: 'pending'
+            enum: ['pending', 'approved', 'borrowed', 'returned', 'overdue', 'lost', 'damaged', 'damaged_heavy', 'rejected', 'cancelled', 'đang chờ', 'đã duyệt', 'đang mượn', 'đã trả', 'đã trả (vi phạm)', 'quá hạn', 'làm mất', 'hư hỏng', 'hư hỏng nặng', 'từ chối', 'đã hủy'],
+            default: 'đang chờ'
         },
         renewalCount: {
             type: Number,

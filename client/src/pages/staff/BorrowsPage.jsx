@@ -28,6 +28,7 @@ import {
   AlertCircle
 } from "lucide-react";
 import ConfirmModal from "../../components/common/ConfirmModal";
+import BorrowSlipModal from "../../components/common/BorrowSlipModal";
 
 const BorrowsPage = () => {
   const [records, setRecords] = useState([]);
@@ -41,6 +42,7 @@ const BorrowsPage = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [showResultModal, setShowResultModal] = useState(false);
+  const [showSlipModal, setShowSlipModal] = useState(false);
   const [returnResult, setReturnResult] = useState(null);
   const [selectedRecord, setSelectedRecord] = useState(null);
 
@@ -68,7 +70,10 @@ const BorrowsPage = () => {
 
   const [returnData, setReturnData] = useState({
     status: "returned",
-    notes: ""
+    notes: "",
+    hasViolation: false,
+    violationAmount: 0,
+    violationReason: ""
   });
 
   useEffect(() => {
@@ -80,8 +85,16 @@ const BorrowsPage = () => {
       setLoading(true);
       const params = { page, limit: 10, search };
 
-      if (activeTab === "returned") {
-        params.status = "returned,damaged,damaged_heavy,lost";
+      if (activeTab === "returned" || activeTab === "da_tra") {
+        params.status = "returned,damaged,damaged_heavy,lost,đã trả,đã trả (vi phạm),hư hỏng,hư hỏng nặng,làm mất";
+      } else if (activeTab === "pending") {
+        params.status = "pending,đang chờ";
+      } else if (activeTab === "approved") {
+        params.status = "approved,đã duyệt";
+      } else if (activeTab === "borrowed") {
+        params.status = "borrowed,đang mượn";
+      } else if (activeTab === "overdue") {
+        params.status = "overdue,quá hạn";
       } else if (activeTab !== "all") {
         params.status = activeTab;
       }
@@ -165,7 +178,13 @@ const BorrowsPage = () => {
       setShowResultModal(true);
 
       setSelectedRecord(null);
-      setReturnData({ status: "returned", notes: "" });
+      setReturnData({
+        status: "returned",
+        notes: "",
+        hasViolation: false,
+        violationAmount: 0,
+        violationReason: ""
+      });
 
       fetchRecords();
     } catch (err) {
@@ -177,7 +196,7 @@ const BorrowsPage = () => {
     e.preventDefault();
     try {
       if (!createData.readerId || !createData.bookId) {
-        setMessage({ type: 'error', text: "Vui lòng chọn đầy đủ độc giả và sách" });
+        toast.error("Vui lòng chọn đầy đủ độc giả và sách");
         return;
       }
       const res = await borrowService.create(createData);
@@ -256,7 +275,19 @@ const BorrowsPage = () => {
       lost: "bg-gray-100 text-gray-600 border-gray-200",
       damaged: "bg-orange-50 text-orange-600 border-orange-100",
       damaged_heavy: "bg-red-50 text-red-600 border-red-100",
-      rejected: "bg-slate-100 text-slate-500 border-slate-200"
+      rejected: "bg-slate-100 text-slate-500 border-slate-200",
+      cancelled: "bg-gray-50 text-gray-500 border-gray-100",
+      'đang chờ': "bg-amber-50 text-amber-600 border-amber-100",
+      'đã duyệt': "bg-indigo-50 text-indigo-600 border-indigo-100",
+      'đang mượn': "bg-blue-50 text-blue-600 border-blue-100",
+      'đã trả': "bg-emerald-50 text-emerald-600 border-emerald-100",
+      'đã trả (vi phạm)': "bg-amber-50 text-amber-600 border-amber-100",
+      'quá hạn': "bg-rose-50 text-rose-600 border-rose-100",
+      'làm mất': "bg-gray-100 text-gray-600 border-gray-200",
+      'hư hỏng': "bg-orange-50 text-orange-600 border-orange-100",
+      'hư hỏng nặng': "bg-red-50 text-red-600 border-red-100",
+      'từ chối': "bg-slate-100 text-slate-500 border-slate-200",
+      'đã hủy': "bg-gray-50 text-gray-500 border-gray-100"
     };
     const labels = {
       pending: "Chờ duyệt",
@@ -267,7 +298,19 @@ const BorrowsPage = () => {
       lost: "Mất sách",
       damaged: "Hư hỏng nhẹ",
       damaged_heavy: "Hư hỏng nặng",
-      rejected: "Đã hủy/Từ chối"
+      rejected: "Đã hủy/Từ chối",
+      cancelled: "Đã hủy",
+      'đang chờ': "Chờ duyệt",
+      'đã duyệt': "Chờ lấy sách",
+      'đang mượn': "Đang mượn",
+      'đã trả': "Đã trả",
+      'đã trả (vi phạm)': "Đã trả (Có vi phạm)",
+      'quá hạn': "Quá hạn",
+      'làm mất': "Mất sách",
+      'hư hỏng': "Hư hỏng nhẹ",
+      'hư hỏng nặng': "Hư hỏng nặng",
+      'từ chối': "Từ chối",
+      'đã hủy': "Đã hủy"
     };
     return (
       <span className={`px-4 py-1.5 rounded-full text-[10px] uppercase tracking-wider font-black border ${styles[status] || styles.borrowed}`}>
@@ -392,15 +435,15 @@ const BorrowsPage = () => {
                       <div>
                         <p className="text-xs font-semibold text-gray-400 mb-1">Ngày mượn</p>
                         <p className="text-xs font-semibold text-gray-700">
-                          {(record.status === 'pending' || record.status === 'approved' || record.status === 'rejected')
+                          {(['pending', 'approved', 'rejected', 'đang chờ', 'đã duyệt', 'từ chối', 'đã hủy'].includes(record.status))
                             ? '---'
                             : new Date(record.borrowDate).toLocaleDateString()}
                         </p>
                       </div>
                       <div>
                         <p className="text-xs font-semibold text-gray-400 mb-1">Hạn trả</p>
-                        <p className={`text-xs font-bold ${record.status === 'overdue' ? 'text-rose-500' : 'text-primary'}`}>
-                          {(record.status === 'pending' || record.status === 'approved' || record.status === 'rejected')
+                        <p className={`text-xs font-bold ${(record.status === 'overdue' || record.status === 'quá hạn') ? 'text-rose-500' : 'text-primary'}`}>
+                          {(['pending', 'approved', 'rejected', 'đang chờ', 'đã duyệt', 'từ chối', 'đã hủy'].includes(record.status))
                             ? '---'
                             : new Date(record.dueDate).toLocaleDateString()}
                         </p>
@@ -419,7 +462,15 @@ const BorrowsPage = () => {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex justify-end gap-2 text-nowrap">
-                      {record.status === 'pending' && (
+                      <button
+                        onClick={() => { setSelectedRecord(record); setShowSlipModal(true); }}
+                        className="p-2.5 bg-neutral-light text-gray-500 rounded-xl hover:bg-primary hover:text-white transition-all shadow-sm"
+                        title="Xem chi tiết phiếu mượn"
+                      >
+                        <FileText size={18} />
+                      </button>
+
+                      {(record.status === 'pending' || record.status === 'đang chờ') && (
                         <>
                           <button
                             onClick={() => handleApprove(record._id, record.bookId?.title)}
@@ -437,7 +488,7 @@ const BorrowsPage = () => {
                           </button>
                         </>
                       )}
-                      {record.status === 'approved' && (
+                      {(record.status === 'approved' || record.status === 'đã duyệt') && (
                         <>
                           <button
                             onClick={() => handleIssue(record._id, record.bookId?.title)}
@@ -455,7 +506,7 @@ const BorrowsPage = () => {
                           </button>
                         </>
                       )}
-                      {(record.status === 'borrowed' || record.status === 'overdue') && (
+                      {(['borrowed', 'overdue', 'đang mượn', 'quá hạn'].includes(record.status)) && (
                         <>
                           <button
                             onClick={() => { setSelectedRecord(record); setShowReturnModal(true); }}
@@ -675,31 +726,61 @@ const BorrowsPage = () => {
             </div>
 
             <form onSubmit={handleReturnSubmit} className="p-8 space-y-6">
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700 ml-1">Tình trạng tài liệu khi trả</label>
-                <select
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all font-bold text-sm"
-                  value={returnData.status}
-                  onChange={(e) => setReturnData({ ...returnData, status: e.target.value })}
-                >
-                  <option value="returned">Nguyên vẹn (Bình thường)</option>
-                  <option value="damaged">Hư hỏng nhẹ (Phí vi phạm 30% - Vẫn dùng được)</option>
-                  <option value="damaged_heavy">Hư hỏng nặng (Phí vi phạm 100% giá trị - Thanh lý)</option>
-                  <option value="lost">Thất lạc / Mất (Phí vi phạm 150% giá trị)</option>
-                </select>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-gray-700 ml-1">Ghi chú tình trạng trả sách</label>
+                  <textarea
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all font-medium text-sm min-h-[100px] resize-none"
+                    placeholder="Mô tả sơ lược về tình trạng tài liệu khi thu hồi..."
+                    value={returnData.notes}
+                    onChange={(e) => setReturnData({ ...returnData, notes: e.target.value })}
+                  ></textarea>
+                </div>
+
+                <div className={`p-5 rounded-[2rem] border transition-all ${returnData.hasViolation ? "bg-red-50/50 border-red-100 shadow-inner" : "bg-gray-50 border-gray-100"}`}>
+                  <label className="flex items-center gap-3 cursor-pointer select-none">
+                    <div className="relative">
+                      <input
+                        type="checkbox"
+                        className="sr-only peer"
+                        checked={returnData.hasViolation}
+                        onChange={(e) => setReturnData({ ...returnData, hasViolation: e.target.checked, status: e.target.checked ? "vi phạm" : "đã trả" })}
+                      />
+                      <div className="w-12 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"></div>
+                    </div>
+                    <span className={`text-sm font-black uppercase tracking-wider ${returnData.hasViolation ? "text-red-600" : "text-gray-500"}`}>
+                      {returnData.hasViolation ? "Ghi nhận vi phạm" : "Trả sách bình thường"}
+                    </span>
+                  </label>
+
+                  {returnData.hasViolation && (
+                    <div className="mt-6 space-y-4 animate-in slide-in-from-top-4 duration-300">
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-red-700 ml-1 uppercase tracking-widest">Lý do vi phạm</label>
+                        <input
+                          type="text"
+                          placeholder="Ví dụ: Làm mất trang, sách bị ướt..."
+                          className="w-full px-4 py-3 bg-white border border-red-200 rounded-xl focus:ring-2 focus:ring-red-500/20 focus:border-red-500 outline-none transition-all font-bold text-sm text-gray-800"
+                          value={returnData.violationReason}
+                          onChange={(e) => setReturnData({ ...returnData, violationReason: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-red-700 ml-1 uppercase tracking-widest">Tổng phí phạt (VND)</label>
+                        <input
+                          type="number"
+                          placeholder="Nhập số tiền..."
+                          className="w-full px-4 py-3 bg-white border border-red-200 rounded-xl focus:ring-2 focus:ring-red-500/20 focus:border-red-500 outline-none transition-all font-black text-xl text-red-600"
+                          value={returnData.violationAmount}
+                          onChange={(e) => setReturnData({ ...returnData, violationAmount: parseInt(e.target.value) || 0 })}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700 ml-1">Ghi chú chi tiết</label>
-                <textarea
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all font-medium text-sm min-h-[100px] resize-none"
-                  placeholder="Mô tả tình trạng sách hoặc các vấn đề phát sinh..."
-                  value={returnData.notes}
-                  onChange={(e) => setReturnData({ ...returnData, notes: e.target.value })}
-                ></textarea>
-              </div>
-
-              <div className="flex gap-3">
+              <div className="flex gap-3 pt-2">
                 <button type="submit" className="flex-1 bg-primary text-white py-3 rounded-xl font-bold hover:bg-primary-dark transition-all shadow-lg shadow-primary/20">
                   Xử lý trả sách
                 </button>
@@ -740,11 +821,11 @@ const BorrowsPage = () => {
                 {returnResult.violation ? (
                   <div className="space-y-3 pt-1">
                     <div className="flex justify-between items-center text-sm">
-                      <span className="font-medium text-gray-500">Trạng thái:</span>
-                      <span className="px-3 py-1 bg-red-50 text-red-600 rounded-lg text-xs font-black uppercase tracking-wider">Ghi nhận Vi phạm</span>
+                      <span className="font-medium text-gray-500">Loại chứng từ:</span>
+                      <span className="px-3 py-1 bg-red-100 text-red-700 rounded-lg text-[10px] font-black uppercase tracking-wider border border-red-200">Phiếu phạt mới</span>
                     </div>
                     <div className="flex justify-between items-center bg-red-50/50 p-3 rounded-xl border border-red-100">
-                      <span className="font-bold text-red-700 text-sm">Phí vi phạm:</span>
+                      <span className="font-bold text-red-700 text-sm">Tổng phí vi phạm:</span>
                       <span className="text-xl font-black text-red-600">{(returnResult.violation.amount).toLocaleString()}đ</span>
                     </div>
                     <p className="text-[11px] text-gray-400 font-bold text-left italic">
@@ -783,6 +864,12 @@ const BorrowsPage = () => {
         title={confirmModal.title}
         message={confirmModal.message}
         confirmText={confirmModal.confirmText}
+      />
+
+      <BorrowSlipModal
+        isOpen={showSlipModal}
+        onClose={() => { setShowSlipModal(false); setSelectedRecord(null); }}
+        borrow={selectedRecord}
       />
     </div>
   );

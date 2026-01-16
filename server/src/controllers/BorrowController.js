@@ -7,7 +7,7 @@ const Book = require("../models/Book");
  * @swagger
  * tags:
  *   name: Borrow
- *   description: Circulation and borrowing management
+ *   description: Quản lý mượn trả sách
  */
 class BorrowController {
   constructor(borrowService) {
@@ -30,9 +30,14 @@ class BorrowController {
    *             type: object
    *             required: [bookId]
    *             properties:
-   *               bookId: { type: string }
-   *               readerId: { type: string, description: "Required for staff, ignored for readers" }
-   *               durationDays: { type: integer, default: 14 }
+   *               bookId:
+   *                 type: string
+   *               readerId:
+   *                 type: string
+   *                 description: "Required for staff, ignored for readers"
+   *               durationDays:
+   *                 type: integer
+   *                 default: 14
    *     responses:
    *       201:
    *         description: Borrow record created
@@ -57,9 +62,10 @@ class BorrowController {
   });
 
   /**
-   * @swagger   * /borrow/cancel/{id}:
-   *   patch:
-   *     summary: Cancel a pending borrow request (Reader only)
+   * @swagger
+   * /borrow/cancel/{id}:
+   *   post:
+   *     summary: Hủy yêu cầu mượn sách
    *     tags: [Borrow]
    *     security:
    *       - bearerAuth: []
@@ -67,20 +73,24 @@ class BorrowController {
    *       - in: path
    *         name: id
    *         required: true
+   *         schema:
+   *           type: string
    *     responses:
    *       200:
    *         description: Cancelled successfully
    */
   cancelBorrow = asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const record = await this.borrowService.cancelBorrow(id, req.user.id);
+    const isStaff = ["librarian", "admin"].includes(req.user.role?.toLowerCase());
+    const record = await this.borrowService.cancelBorrow(id, req.user.id, isStaff);
     ApiResponse.success(res, record, "Yêu cầu mượn đã được hủy thành công");
   });
 
   /**
-   * @swagger   * /borrow/approve/{id}:
-   *   patch:
-   *     summary: Approve a pending borrow request (Staff only)
+   * @swagger
+   * /borrow/approve/{id}:
+   *   post:
+   *     summary: Duyệt yêu cầu mượn (Thủ thư)
    *     tags: [Borrow]
    *     security:
    *       - bearerAuth: []
@@ -88,6 +98,8 @@ class BorrowController {
    *       - in: path
    *         name: id
    *         required: true
+   *         schema:
+   *           type: string
    *     responses:
    *       200:
    *         description: Approved successfully
@@ -101,8 +113,8 @@ class BorrowController {
   /**
    * @swagger
    * /borrow/issue/{id}:
-   *   patch:
-   *     summary: Mark book as collected/issued to reader (Staff only)
+   *   post:
+   *     summary: Xác nhận đã lấy sách (Thủ thư)
    *     tags: [Borrow]
    *     security:
    *       - bearerAuth: []
@@ -110,6 +122,8 @@ class BorrowController {
    *       - in: path
    *         name: id
    *         required: true
+   *         schema:
+   *           type: string
    *     responses:
    *       200:
    *         description: Issued successfully
@@ -123,8 +137,8 @@ class BorrowController {
   /**
    * @swagger
    * /borrow/reject/{id}:
-   *   patch:
-   *     summary: Reject a pending borrow request (Staff only)
+   *   post:
+   *     summary: Từ chối yêu cầu mượn (Thủ thư)
    *     tags: [Borrow]
    *     security:
    *       - bearerAuth: []
@@ -132,6 +146,8 @@ class BorrowController {
    *       - in: path
    *         name: id
    *         required: true
+   *         schema:
+   *           type: string
    *     responses:
    *       200:
    *         description: Rejected successfully
@@ -146,8 +162,8 @@ class BorrowController {
   /**
    * @swagger
    * /borrow/renew/{id}:
-   *   patch:
-   *     summary: Renew a borrow duration (+14 days)
+   *   post:
+   *     summary: Gia hạn mượn sách (+14 ngày)
    *     tags: [Borrow]
    *     security:
    *       - bearerAuth: []
@@ -155,6 +171,8 @@ class BorrowController {
    *       - in: path
    *         name: id
    *         required: true
+   *         schema:
+   *           type: string
    *     responses:
    *       200:
    *         description: Renewed successfully
@@ -168,8 +186,8 @@ class BorrowController {
   /**
    * @swagger
    * /borrow/return/{id}:
-   *   patch:
-   *     summary: Process book return (Staff only)
+   *   post:
+   *     summary: Xử lý trả sách (Thủ thư)
    *     tags: [Borrow]
    *     security:
    *       - bearerAuth: []
@@ -177,23 +195,28 @@ class BorrowController {
    *       - in: path
    *         name: id
    *         required: true
+   *         schema:
+   *           type: string
    *     requestBody:
    *       content:
    *         application/json:
    *           schema:
    *             type: object
    *             properties:
-   *               status: { type: string, enum: [returned, damaged, damaged_heavy, lost] }
-   *               notes: { type: string }
+   *               status:
+   *                 type: string
+   *                 enum: [returned, damaged, damaged_heavy, lost]
+   *               notes:
+   *                 type: string
    *     responses:
    *       200:
    *         description: Processed successfully
    */
   returnBook = asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const { status, notes } = req.body;
+    const { status, notes, violationAmount, violationReason } = req.body;
 
-    const result = await this.borrowService.returnBook(id, req.user.id, { status, notes });
+    const result = await this.borrowService.returnBook(id, req.user.id, { status, notes, violationAmount, violationReason });
 
     let message = "Book returned successfully";
     if (result.violation) {
@@ -207,14 +230,15 @@ class BorrowController {
    * @swagger
    * /borrow/history/{readerId}:
    *   get:
-   *     summary: Get borrow history of a reader
+   *     summary: Lịch sử mượn trả của độc gia
    *     tags: [Borrow]
    *     security:
    *       - bearerAuth: []
    *     parameters:
    *       - in: path
    *         name: readerId
-   *         schema: { type: string }
+   *         schema:
+   *           type: string
    *     responses:
    *       200:
    *         description: List of history records
@@ -235,8 +259,9 @@ class BorrowController {
       return ApiResponse.error(res, "Access denied", 403);
     }
     const history = await this.borrowService.repository.model.find({ readerId })
-      .populate({ path: 'bookId', select: 'title isbn coverImage author' })
-      .select('borrowDate dueDate returnDate status notes')
+      .populate({ path: 'bookId', select: 'title isbn coverImage author price' })
+      .populate({ path: 'readerId', select: 'fullName username idCard phone email' })
+      .select('-__v')
       .sort({ createdAt: -1 })
       .lean();
       
@@ -247,17 +272,19 @@ class BorrowController {
    * @swagger
    * /borrow:
    *   get:
-   *     summary: Get all borrow records with filters (Staff only)
+   *     summary: Lấy danh sách phiếu mượn (Thủ thư)
    *     tags: [Borrow]
    *     security:
    *       - bearerAuth: []
    *     parameters:
    *       - in: query
    *         name: status
-   *         schema: { type: string }
+   *         schema:
+   *           type: string
    *       - in: query
    *         name: search
-   *         schema: { type: string }
+   *         schema:
+   *           type: string
    *     responses:
    *       200:
    *         description: Paginated list of records
@@ -341,7 +368,7 @@ class BorrowController {
    * @swagger
    * /borrow/{id}:
    *   get:
-   *     summary: Get specific borrow record details
+   *     summary: Xem chi tiết phiếu mượn
    *     tags: [Borrow]
    *     security:
    *       - bearerAuth: []
@@ -349,6 +376,8 @@ class BorrowController {
    *       - in: path
    *         name: id
    *         required: true
+   *         schema:
+   *           type: string
    *     responses:
    *       200:
    *         description: Record details

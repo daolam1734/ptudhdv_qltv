@@ -41,7 +41,7 @@ class BorrowService extends BaseService {
     // 1. Kiểm tra tài liệu quá hạn
     const overdueRecord = await this.repository.findOne({
       readerId,
-      status: "borrowed",
+      status: "đang mượn",
       dueDate: { $lt: new Date() }
     });
     if (overdueRecord) {
@@ -124,7 +124,7 @@ class BorrowService extends BaseService {
         borrowDate,
         dueDate,
         borrowSessionId,
-        status: isPending ? "pending" : "borrowed"
+        status: isPending ? "đang chờ" : "đang mượn"
       });
 
       // Cập nhật số lượng trong kho bằng $inc để tránh lỗi đua dữ liệu
@@ -153,12 +153,12 @@ class BorrowService extends BaseService {
   async approveBorrow(borrowId, staffId) {
     const record = await this.repository.findById(borrowId);
     if (!record) throw new Error("Borrow record not found");
-    if (record.status !== "pending") {
+    if (record.status !== "đang chờ") {
       throw new Error("Only pending requests can be approved");
     }
 
     return await this.repository.update(borrowId, {
-      status: "approved",
+      status: "đã duyệt",
       staffId
     });
   }
@@ -168,7 +168,7 @@ class BorrowService extends BaseService {
     if (!record) throw new Error("Borrow record not found");
     
     // Can issue if approved or directly from pending (for walk-in pickup)
-    if (record.status !== "approved" && record.status !== "pending") {
+    if (record.status !== "đã duyệt" && record.status !== "đang chờ") {
       throw new Error("Sách chỉ có thể được phát khi đang ở trạng thái Chờ duyệt hoặc Đã duyệt");
     }
 
@@ -178,7 +178,7 @@ class BorrowService extends BaseService {
     dueDate.setDate(borrowDate.getDate() + 14);
 
     return await this.repository.update(borrowId, {
-      status: "borrowed",
+      status: "đang mượn",
       staffId,
       borrowDate,
       dueDate
@@ -188,7 +188,7 @@ class BorrowService extends BaseService {
   async rejectBorrow(borrowId, staffId, notes = "") {
     const record = await this.repository.findById(borrowId);
     if (!record) throw new Error("Borrow record not found");
-    if (record.status !== "pending" && record.status !== "approved") {
+    if (record.status !== "đang chờ" && record.status !== "đã duyệt") {
       throw new Error("Chỉ có thể từ chối/hủy yêu cầu khi đang ở trạng thái Chờ duyệt hoặc Đã duyệt");
     }
 
@@ -205,23 +205,23 @@ class BorrowService extends BaseService {
     await this.readerService.repository.decrementBorrowCount(record.readerId);
 
     return await this.repository.update(borrowId, {
-      status: "rejected",
+      status: "từ chối",
       staffId,
       notes: notes || "Yêu cầu mượn sách bị từ chối"
     });
   }
 
-  async cancelBorrow(borrowId, readerId) {
+  async cancelBorrow(borrowId, userId, isStaff = false) {
     const record = await this.repository.findById(borrowId);
     if (!record) throw new Error("Không tìm thấy thông tin lượt mượn");
 
-    // Chỉ có thể hủy khi đang chờ duyệt
-    if (record.status !== "pending") {
-      throw new Error("Chỉ có thể hủy yêu cầu mượn khi đang trong trạng thái chờ duyệt");
+    // Chỉ có thể hủy khi đang chờ duyệt hoặc đã duyệt (nhưng chưa phát sách)
+    if (record.status !== "đang chờ" && record.status !== "đã duyệt") {
+      throw new Error("Chỉ có thể hủy yêu cầu mượn khi đang trong trạng thái chờ duyệt hoặc đã duyệt");
     }
 
-    // Kiểm tra quyền sở hữu
-    if (record.readerId.toString() !== readerId.toString()) {
+    // Kiểm tra quyền sở hữu (Bypass nếu là thủ thư/admin)
+    if (!isStaff && record.readerId.toString() !== userId.toString()) {
       throw new Error("Bạn không có quyền hủy yêu cầu mượn này");
     }
 
@@ -238,7 +238,7 @@ class BorrowService extends BaseService {
     }
 
     // 2. Giảm số lượng đang mượn của độc giả
-    await this.readerService.repository.model.findByIdAndUpdate(readerId, {
+    await this.readerService.repository.model.findByIdAndUpdate(record.readerId, {
       $inc: { 
         currentBorrowCount: -1,
         totalBorrowed: -1 
@@ -246,8 +246,8 @@ class BorrowService extends BaseService {
     });
 
     return await this.repository.update(borrowId, {
-      status: "cancelled",
-      notes: "Độc giả đã hủy yêu cầu mượn"
+      status: "đã hủy",
+      notes: isStaff ? `Thủ thư đã hủy yêu cầu (ID thực hiện: ${userId})` : "Độc giả đã hủy yêu cầu mượn"
     });
   }
 
@@ -257,11 +257,11 @@ class BorrowService extends BaseService {
 
     // Rule 1: Không được gia hạn sách đã quá hạn
     const now = new Date();
-    if (record.status === "overdue" || now > record.dueDate) {
+    if (record.status === "quá hạn" || now > new Date(record.dueDate)) {
       throw new Error("Không thể gia hạn vì sách đã quá hạn. Vui lòng trả sách và xử lý phí vi phạm (nếu có).");
     }
 
-    if (record.status !== "borrowed") {
+    if (record.status !== "đang mượn") {
       throw new Error("Chỉ có thể gia hạn sách đang trong trạng thái mượn.");
     }
 
@@ -273,7 +273,7 @@ class BorrowService extends BaseService {
     // Rule 3: Có người khác đặt giữ sách (yêu cầu pending)
     const pendingOthers = await this.repository.findAll({
       bookId: record.bookId,
-      status: "pending"
+      status: "đang chờ"
     });
 
     if (pendingOthers.data && pendingOthers.data.length > 0) {
@@ -291,10 +291,10 @@ class BorrowService extends BaseService {
   }
 
   async returnBook(borrowId, staffId, details = {}) {
-    const { status = "returned", notes = "" } = details;
+    const { status = "đã trả", notes = "", violationAmount = 0, violationReason = "" } = details;
     const record = await this.repository.findById(borrowId);
     if (!record) throw new Error("Borrow record not found");
-    if (['returned', 'lost', 'damaged_heavy'].includes(record.status)) {
+    if (['returned', 'lost', 'damaged_heavy', 'đã trả', 'làm mất', 'hư hỏng nặng'].includes(record.status)) {
       throw new Error("Book already returned or record is closed");
     }
 
@@ -307,12 +307,15 @@ class BorrowService extends BaseService {
     let totalViolationAmount = 0;
     let violationReasons = [];
 
-    // 1. Calculate overdue violation fee
-    if (returnDate > record.dueDate) {
-      const diffTime = Math.abs(returnDate - record.dueDate);
+    // 1. Calculate overdue violation fee (STILL AUTOMATIC)
+    if (record.dueDate && returnDate > new Date(record.dueDate)) {
+      const diffTime = Math.abs(returnDate - new Date(record.dueDate));
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      totalViolationAmount += diffDays * 5000; // 5000 VND/day
-      violationReasons.push("quá hạn");
+      const overdueFee = diffDays * 5000;
+      if (!isNaN(overdueFee)) {
+        totalViolationAmount += overdueFee;
+        violationReasons.push("quá hạn");
+      }
 
       // Update reader overdue count
       const updatedReader = await this.readerService.repository.update(record.readerId, {
@@ -327,47 +330,33 @@ class BorrowService extends BaseService {
       }
     }
 
-    // 2. Handle damaged or lost status
-    if (["damaged", "damaged_heavy", "lost"].includes(status)) {
-       const book = await this.bookService.getById(record.bookId);
-       let damageAmount = 0;
-       let reasonLabel = "";
-
-       switch(status) {
-         case "damaged":
-           damageAmount = book.price * 0.3; 
-           reasonLabel = "hư hỏng nhẹ";
-           break;
-         case "damaged_heavy":
-           damageAmount = book.price * 1.0; 
-           reasonLabel = "hư hỏng nặng";
-           break;
-         case "lost":
-           damageAmount = book.price * 1.5; 
-           reasonLabel = "làm mất";
-           break;
-       }
-       
-       totalViolationAmount += damageAmount;
-       violationReasons.push(reasonLabel);
+    // 2. Add manual violation fee from staff (Simplified redesign)
+    const manualFee = parseFloat(violationAmount) || 0;
+    if (manualFee > 0) {
+      totalViolationAmount += manualFee;
+      if (violationReason) violationReasons.push(violationReason);
+      else violationReasons.push("vi phạm khi trả");
     }
 
     // 3. Create single violation record if there's any fee
-    if (totalViolationAmount > 0) {
+    const finalAmount = Math.round(totalViolationAmount);
+    if (!isNaN(finalAmount) && finalAmount > 0) {
       result.violation = await this.violationService.createViolation({
         readerId: record.readerId,
         borrowId: record._id,
-        amount: totalViolationAmount,
+        amount: finalAmount,
         reason: violationReasons.join(" & "),
-        description: notes || `Phí vi phạm do ${violationReasons.join(" và ")}`
+        description: notes || `Phí vi phạm ghi nhận khi thu hồi sách`,
+        staffId
       });
     }
 
     // 4. Update Borrow record
     const updateData = {
-      status,
+      status: (status === 'vi phạm' || finalAmount > 0) ? "đã trả (vi phạm)" : "đã trả",
       returnDate,
-      notes
+      notes,
+      staffId
     };
 
     if (result.violation) {
@@ -380,19 +369,13 @@ class BorrowService extends BaseService {
 
     result.record = await this.repository.update(borrowId, updateData);
 
-    // 5. Update book quantity
-    if (status !== "lost" && status !== "damaged_heavy") {
-      const book = await this.bookService.getById(record.bookId);
+    // 5. Update book quantity (Simplified: always returned to stock unless manually disposed by staff in BooksPage)
+    const book = await this.bookService.getById(record.bookId);
+    if (book) {
       await this.bookService.update(record.bookId, {
-        available: book.available + 1,
+        available: (book.available || 0) + 1,
         borrowed: Math.max(0, (book.borrowed || 0) - 1)
       });
-    } else {
-       const book = await this.bookService.getById(record.bookId);
-       await this.bookService.update(record.bookId, {
-         quantity: Math.max(0, book.quantity - 1),
-         borrowed: Math.max(0, (book.borrowed || 0) - 1)
-       });
     }
 
     await this.readerService.repository.decrementBorrowCount(record.readerId);

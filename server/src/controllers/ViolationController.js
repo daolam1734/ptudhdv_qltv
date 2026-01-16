@@ -17,7 +17,16 @@ class ViolationController {
   payViolation = asyncHandler(async (req, res) => {
     const { violationId } = req.params;
     const violation = await this.violationService.payViolation(violationId, req.user.id);
-    ApiResponse.success(res, violation, 'Violation paid successfully');
+    ApiResponse.success(res, violation, 'Đã thanh toán vi phạm thành công');
+  });
+
+  createViolation = asyncHandler(async (req, res) => {
+    const data = {
+      ...req.body,
+      staffId: req.user.id
+    };
+    const violation = await this.violationService.createViolation(data);
+    ApiResponse.success(res, violation, 'Đã tạo bản ghi vi phạm mới', 201);
   });
 
   getAllViolations = asyncHandler(async (req, res) => {

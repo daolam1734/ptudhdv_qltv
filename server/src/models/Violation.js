@@ -18,14 +18,13 @@ const violationSchema = new mongoose.Schema(
         },
         reason: {
             type: String,
-            required: true,
-            enum: ['overdue', 'lost_book', 'damaged_book', 'other']
+            required: true
         },
         description: String,
         status: {
             type: String,
-            enum: ['unpaid', 'paid', 'cancelled'],
-            default: 'unpaid'
+            enum: ['unpaid', 'paid', 'cancelled', 'chưa thanh toán', 'đã thanh toán', 'đã hủy'],
+            default: 'chưa thanh toán'
         },
         paidAt: Date,
         staffId: {

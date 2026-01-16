@@ -26,7 +26,7 @@ const RegisterPage = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
-        
+
         if (formData.password !== formData.confirmPassword) {
             return setError('Mật khẩu xác nhận không khớp.');
         }
@@ -34,9 +34,9 @@ const RegisterPage = () => {
         setLoading(true);
         try {
             const { confirmPassword, phoneNumber, ...rest } = formData;
-            await authService.register({ 
-                ...rest, 
-                phone: phoneNumber 
+            await authService.register({
+                ...rest,
+                phone: phoneNumber
             });
             setSuccess(true);
             setTimeout(() => navigate('/login'), 3000);
@@ -90,7 +90,7 @@ const RegisterPage = () => {
 
             <div className="bg-white p-6 sm:p-8 rounded-[2.5rem] shadow-sm border border-gray-100 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-48 h-48 bg-primary-light/10/50 -mr-24 -mt-24 rounded-full blur-3xl"></div>
-                
+
                 <form className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 relative z-10" onSubmit={handleSubmit}>
                     {error && (
                         <div className="md:col-span-2 p-3 bg-rose-50 border border-rose-100 rounded-xl flex items-center gap-3 text-rose-800 text-xs font-semibold animate-in slide-in-from-top duration-300">
@@ -101,7 +101,7 @@ const RegisterPage = () => {
 
                     <div className="space-y-4">
                         <h3 className="text-xs font-bold text-primary border-b border-primary-light/10 pb-1.5 uppercase">Thông tin tài khoản</h3>
-                        
+
                         <div className="space-y-1.5">
                             <label className="text-xs font-semibold text-gray-500 ml-1">Tên đăng nhập</label>
                             <div className="relative group">
@@ -177,7 +177,7 @@ const RegisterPage = () => {
 
                     <div className="space-y-4">
                         <h3 className="text-xs font-bold text-primary border-b border-primary-light/10 pb-1.5 uppercase">Thông tin cá nhân</h3>
-                        
+
                         <div className="space-y-1.5">
                             <label className="text-xs font-semibold text-gray-500 ml-1">Họ và tên</label>
                             <div className="relative group">

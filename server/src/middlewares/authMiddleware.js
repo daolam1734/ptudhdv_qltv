@@ -23,7 +23,10 @@ const authorize = (...roles) => {
       return ApiResponse.error(res, 'Not authenticated', 401);
     }
 
-    if (!roles.includes(req.user.role)) {
+    const userRole = req.user.role?.toLowerCase();
+    const authorizedRoles = roles.map(r => r.toLowerCase());
+
+    if (!authorizedRoles.includes(userRole)) {
       return ApiResponse.error(res, 'Access denied. Insufficient permissions', 403);
     }
 
