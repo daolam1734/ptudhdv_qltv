@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
+const compression = require("compression");
 const { swaggerUi, specs } = require("./config/swagger");
 
 // Import Models
@@ -9,7 +10,7 @@ const Staff = require("./models/Staff");
 const Reader = require("./models/Reader");
 const Book = require("./models/Book");
 const Borrow = require("./models/Borrow");
-const Fine = require("./models/Fine");
+const Violation = require("./models/Violation");
 const Category = require("./models/Category");
 
 // Import Repositories
@@ -17,7 +18,7 @@ const StaffRepository = require("./repositories/StaffRepository");
 const ReaderRepository = require("./repositories/ReaderRepository");
 const BookRepository = require("./repositories/BookRepository");
 const BorrowRepository = require("./repositories/BorrowRepository");
-const FineRepository = require("./repositories/FineRepository");
+const ViolationRepository = require("./repositories/ViolationRepository");
 const CategoryRepository = require("./repositories/CategoryRepository");
 
 // Import Services
@@ -26,7 +27,7 @@ const BookService = require("./services/BookService");
 const ReaderService = require("./services/ReaderService");
 const StaffService = require("./services/StaffService");
 const BorrowService = require("./services/BorrowService");
-const FineService = require("./services/FineService");
+const ViolationService = require("./services/ViolationService");
 const CategoryService = require("./services/CategoryService");
 
 // Import Controllers
@@ -35,7 +36,7 @@ const BookController = require("./controllers/BookController");
 const ReaderController = require("./controllers/ReaderController");
 const StaffController = require("./controllers/StaffController");
 const BorrowController = require("./controllers/BorrowController");
-const FineController = require("./controllers/FineController");
+const ViolationController = require("./controllers/ViolationController");
 const CategoryController = require("./controllers/CategoryController");
 const reportController = require("./controllers/ReportController");
 
@@ -44,6 +45,9 @@ const apiRoutes = require("./routes/index");
 
 const createApp = async () => {
   const app = express();
+
+  // Middleware for network optimization
+  app.use(compression());
 
   // Disable ETag for all requests
   app.set("etag", false);
@@ -74,7 +78,7 @@ const createApp = async () => {
   const readerRepo = new ReaderRepository(Reader);
   const bookRepo = new BookRepository(Book);
   const borrowRepo = new BorrowRepository(Borrow);
-  const fineRepo = new FineRepository(Fine);
+  const violationRepo = new ViolationRepository(Violation);
   const categoryRepo = new CategoryRepository(Category);
 
   // Initialize Services
@@ -82,17 +86,17 @@ const createApp = async () => {
   const bookService = new BookService(bookRepo);
   const readerService = new ReaderService(readerRepo);
   const staffService = new StaffService(staffRepo);
-  const fineService = new FineService(fineRepo, readerService);
-  const borrowService = new BorrowService(borrowRepo, bookService, readerService, fineService);
+  const violationService = new ViolationService(violationRepo, readerService);
+  const borrowService = new BorrowService(borrowRepo, bookService, readerService, violationService);
   const categoryService = new CategoryService(categoryRepo);
 
   // Initialize Controllers
   const authController = new AuthController(authService);
   const bookController = new BookController(bookService);
-  const readerController = new ReaderController(readerService, borrowService);
+  const readerController = new ReaderController(readerService, borrowService, violationService);
   const staffController = new StaffController(staffService);
   const borrowController = new BorrowController(borrowService);
-  const fineController = new FineController(fineService);
+  const violationController = new ViolationController(violationService);
   const categoryController = new CategoryController(categoryService);
 
   // Register All Routes
@@ -102,7 +106,7 @@ const createApp = async () => {
     borrowController,
     readerController,
     staffController,
-    fineController,
+    violationController,
     categoryController
   }));
 

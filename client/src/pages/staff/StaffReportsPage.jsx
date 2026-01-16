@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import reportService from '../../services/reportService';
-import { 
-    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
+import {
+    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     PieChart, Pie, Cell, LineChart, Line, AreaChart, Area
 } from 'recharts';
-import { 
-    TrendingUp, Users, BookOpen, AlertCircle, Clock, 
+import {
+    TrendingUp, Users, BookOpen, AlertCircle, Clock,
     CheckCircle2, FileText, Download, Calendar, ArrowUpRight,
     ArrowDownRight, MoreVertical, Search, Filter, RefreshCcw
 } from 'lucide-react';
@@ -59,35 +59,35 @@ const StaffReportsPage = () => {
     const COLORS = ['#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f59e0b', '#10b981'];
 
     const summaryCards = [
-        { 
-            label: 'Độc giả hoạt động', 
-            value: stats?.readerStats?.totalReaders || 0, 
-            icon: <Users className="text-indigo-600" />, 
-            trend: 'Tổng số', 
+        {
+            label: 'Độc giả hoạt động',
+            value: stats?.readerStats?.totalReaders || 0,
+            icon: <Users className="text-indigo-600" />,
+            trend: 'Tổng số',
             isUp: true,
             bg: 'bg-indigo-50'
         },
-        { 
-            label: 'Sách đang mượn', 
-            value: stats?.borrowStats?.activeBorrows || 0, 
-            icon: <TrendingUp className="text-emerald-600" />, 
-            trend: 'Lưu thông', 
+        {
+            label: 'Sách đang mượn',
+            value: stats?.borrowStats?.activeBorrows || 0,
+            icon: <TrendingUp className="text-emerald-600" />,
+            trend: 'Lưu thông',
             isUp: true,
             bg: 'bg-emerald-50'
         },
-        { 
-            label: 'Quá hạn trả', 
-            value: stats?.borrowStats?.overdueBorrows || 0, 
-            icon: <AlertCircle className="text-rose-600" />, 
-            trend: 'Cần thu hồi', 
+        {
+            label: 'Quá hạn trả',
+            value: stats?.borrowStats?.overdueBorrows || 0,
+            icon: <AlertCircle className="text-rose-600" />,
+            trend: 'Cần thu hồi',
             isUp: false,
             bg: 'bg-rose-50'
         },
-        { 
-            label: 'Yêu cầu chờ duyệt', 
-            value: stats?.borrowStats?.pendingRequests || 0, 
-            icon: <Clock className="text-amber-600" />, 
-            trend: 'Đợi xử lý', 
+        {
+            label: 'Yêu cầu chờ duyệt',
+            value: stats?.borrowStats?.pendingRequests || 0,
+            icon: <Clock className="text-amber-600" />,
+            trend: 'Đợi xử lý',
             isUp: true,
             bg: 'bg-amber-50'
         },
@@ -103,13 +103,13 @@ const StaffReportsPage = () => {
                 </div>
                 <div className="flex items-center gap-3">
                     <div className="flex bg-white border border-slate-200 p-1 rounded-xl shadow-sm">
-                        <button 
+                        <button
                             onClick={() => setTimeRange('7days')}
                             className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${timeRange === '7days' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}
                         >
                             7 ngày
                         </button>
-                        <button 
+                        <button
                             onClick={() => setTimeRange('30days')}
                             className={`px-4 py-2 text-xs font-bold rounded-lg transition-all ${timeRange === '30days' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:bg-slate-50'}`}
                         >
@@ -152,14 +152,14 @@ const StaffReportsPage = () => {
                             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Xu hướng mượn & trả ({timeRange})</p>
                         </div>
                         <div className="flex gap-4">
-                             <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2">
                                 <div className="h-2 w-2 rounded-full bg-indigo-500"></div>
                                 <span className="text-[10px] font-black text-slate-400 uppercase">Mượn</span>
-                             </div>
-                             <div className="flex items-center gap-2">
+                            </div>
+                            <div className="flex items-center gap-2">
                                 <div className="h-2 w-2 rounded-full bg-emerald-500"></div>
                                 <span className="text-[10px] font-black text-slate-400 uppercase">Trả</span>
-                             </div>
+                            </div>
                         </div>
                     </div>
                     <div className="h-80 w-full mt-4">
@@ -167,48 +167,48 @@ const StaffReportsPage = () => {
                             <AreaChart data={trends} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
                                 <defs>
                                     <linearGradient id="colorBorrows" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1}/>
-                                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1} />
+                                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
                                     </linearGradient>
                                     <linearGradient id="colorReturns" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
-                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.1} />
+                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                                     </linearGradient>
                                 </defs>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                <XAxis 
-                                    dataKey="label" 
-                                    axisLine={false} 
-                                    tickLine={false} 
-                                    tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }} 
+                                <XAxis
+                                    dataKey="label"
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }}
                                     dy={10}
                                 />
-                                <YAxis 
-                                    axisLine={false} 
-                                    tickLine={false} 
+                                <YAxis
+                                    axisLine={false}
+                                    tickLine={false}
                                     tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }}
                                 />
-                                <Tooltip 
+                                <Tooltip
                                     contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', padding: '12px' }}
                                     itemStyle={{ fontSize: '12px', fontWeight: 900, textTransform: 'uppercase' }}
                                 />
-                                <Area 
-                                    type="monotone" 
-                                    dataKey="borrows" 
+                                <Area
+                                    type="monotone"
+                                    dataKey="borrows"
                                     name="Mượn"
-                                    stroke="#6366f1" 
+                                    stroke="#6366f1"
                                     strokeWidth={4}
-                                    fillOpacity={1} 
-                                    fill="url(#colorBorrows)" 
+                                    fillOpacity={1}
+                                    fill="url(#colorBorrows)"
                                 />
-                                <Area 
-                                    type="monotone" 
-                                    dataKey="returns" 
+                                <Area
+                                    type="monotone"
+                                    dataKey="returns"
                                     name="Trả"
-                                    stroke="#10b981" 
+                                    stroke="#10b981"
                                     strokeWidth={4}
-                                    fillOpacity={1} 
-                                    fill="url(#colorReturns)" 
+                                    fillOpacity={1}
+                                    fill="url(#colorReturns)"
                                 />
                             </AreaChart>
                         </ResponsiveContainer>
@@ -269,8 +269,8 @@ const StaffReportsPage = () => {
                                     <span className="text-[10px] font-bold text-slate-400 mb-1">cuốn</span>
                                 </div>
                                 <div className="h-1 w-full bg-black/5 rounded-full mt-4 overflow-hidden">
-                                    <div 
-                                        className={`h-full ${item.color}`} 
+                                    <div
+                                        className={`h-full ${item.color}`}
                                         style={{ width: `${(item.value / (stats?.bookStats?.total || 1)) * 100}%` }}
                                     ></div>
                                 </div>
@@ -279,47 +279,47 @@ const StaffReportsPage = () => {
                     </div>
                 </div>
 
-                {/* Fine Collection Analysis (New Widget) */}
+                {/* Violation Analysis (New Widget) */}
                 <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
                     <div className="flex items-center justify-between mb-8">
                         <div>
-                            <h4 className="text-lg font-black text-slate-900 tracking-tight">Thu phí Phạt</h4>
+                            <h4 className="text-lg font-black text-slate-900 tracking-tight">Xử lý Vi phạm</h4>
                             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Sách hỏng & quá hạn</p>
                         </div>
                         <div className="px-3 py-1 bg-amber-100 text-amber-700 rounded-lg text-[10px] font-black uppercase">
-                            Tỷ lệ thu: {Math.round((( (stats?.borrowStats?.totalFines || 0) - (stats?.borrowStats?.unpaidFines || 0) ) / (stats?.borrowStats?.totalFines || 1)) * 100)}%
+                            Tỷ lệ xử lý: {Math.round((((stats?.borrowStats?.totalViolationAmount || 0) - (stats?.borrowStats?.unpaidViolationAmount || 0)) / (stats?.borrowStats?.totalViolationAmount || 1)) * 100)}%
                         </div>
                     </div>
                     <div className="flex items-center gap-8">
-                         <div className="relative w-32 h-32 flex-shrink-0">
+                        <div className="relative w-32 h-32 flex-shrink-0">
                             <svg className="w-full h-full" viewBox="0 0 36 36">
                                 <circle cx="18" cy="18" r="16" fill="none" className="stroke-slate-100" strokeWidth="3" />
-                                <circle 
-                                    cx="18" cy="18" r="16" fill="none" 
-                                    className="stroke-amber-500 transition-all duration-1000" 
-                                    strokeWidth="3" 
-                                    strokeDasharray={`${(((stats?.borrowStats?.totalFines || 0) - (stats?.borrowStats?.unpaidFines || 0)) / (stats?.borrowStats?.totalFines || 1)) * 100} 100`} 
-                                    strokeLinecap="round" 
+                                <circle
+                                    cx="18" cy="18" r="16" fill="none"
+                                    className="stroke-amber-500 transition-all duration-1000"
+                                    strokeWidth="3"
+                                    strokeDasharray={`${(((stats?.borrowStats?.totalViolationAmount || 0) - (stats?.borrowStats?.unpaidViolationAmount || 0)) / (stats?.borrowStats?.totalViolationAmount || 1)) * 100} 100`}
+                                    strokeLinecap="round"
                                     transform="rotate(-90 18 18)"
                                 />
                             </svg>
                             <div className="absolute inset-0 flex flex-col items-center justify-center">
                                 <span className="text-xl font-black text-slate-900">
-                                    {(((stats?.borrowStats?.totalFines || 0) - (stats?.borrowStats?.unpaidFines || 0)) / (stats?.borrowStats?.totalFines || 1) * 100).toFixed(0)}%
+                                    {(((stats?.borrowStats?.totalViolationAmount || 0) - (stats?.borrowStats?.unpaidViolationAmount || 0)) / (stats?.borrowStats?.totalViolationAmount || 1) * 100).toFixed(0)}%
                                 </span>
                             </div>
-                         </div>
-                         <div className="flex-1 space-y-4">
-                             <div>
-                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Đã thu hồi</p>
-                                 <h6 className="text-xl font-black text-emerald-600">{((stats?.borrowStats?.totalFines || 0) - (stats?.borrowStats?.unpaidFines || 0)).toLocaleString()} VNĐ</h6>
-                             </div>
-                             <div className="h-px bg-slate-50"></div>
-                             <div>
-                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Tổng nợ đọng</p>
-                                 <h6 className="text-xl font-black text-rose-600">{(stats?.borrowStats?.unpaidFines || 0).toLocaleString()} VNĐ</h6>
-                             </div>
-                         </div>
+                        </div>
+                        <div className="flex-1 space-y-4">
+                            <div>
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Đã giải quyết</p>
+                                <h6 className="text-xl font-black text-emerald-600">{((stats?.borrowStats?.totalViolationAmount || 0) - (stats?.borrowStats?.unpaidViolationAmount || 0)).toLocaleString()} VNĐ</h6>
+                            </div>
+                            <div className="h-px bg-slate-50"></div>
+                            <div>
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Đang chờ xử lý</p>
+                                <h6 className="text-xl font-black text-rose-600">{(stats?.borrowStats?.unpaidViolationAmount || 0).toLocaleString()} VNĐ</h6>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -336,14 +336,13 @@ const StaffReportsPage = () => {
                     <div className="space-y-6 relative before:absolute before:left-5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-50">
                         {activities.map((activity, idx) => (
                             <div key={idx} className="relative flex items-start gap-5 group">
-                                <div className={`relative z-10 w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-transform group-hover:scale-110 ${
-                                    activity.type === 'alert' ? 'bg-rose-50 text-rose-600' :
-                                    activity.type === 'action' ? 'bg-indigo-50 text-indigo-600' :
-                                    activity.type === 'system' ? 'bg-amber-50 text-amber-600' : 'bg-slate-50 text-slate-400'
-                                }`}>
+                                <div className={`relative z-10 w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-transform group-hover:scale-110 ${activity.type === 'alert' ? 'bg-rose-50 text-rose-600' :
+                                        activity.type === 'action' ? 'bg-indigo-50 text-indigo-600' :
+                                            activity.type === 'system' ? 'bg-amber-50 text-amber-600' : 'bg-slate-50 text-slate-400'
+                                    }`}>
                                     {activity.type === 'alert' ? <AlertCircle size={18} /> :
-                                     activity.type === 'action' ? <FileText size={18} /> :
-                                     <Clock size={18} />}
+                                        activity.type === 'action' ? <FileText size={18} /> :
+                                            <Clock size={18} />}
                                 </div>
                                 <div className="flex-1">
                                     <div className="flex items-center justify-between">
@@ -363,50 +362,50 @@ const StaffReportsPage = () => {
                     </div>
                 </div>
 
-                {/* Fine Collection Stat */}
+                {/* Violation Collection Stat */}
                 <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
                     <div className="flex items-center justify-between mb-8">
                         <div>
-                            <h4 className="text-lg font-black text-slate-900 tracking-tight">Tình trạng Phí phạt</h4>
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Quản lý dòng tiền</p>
+                            <h4 className="text-lg font-black text-slate-900 tracking-tight">Tình trạng Vi phạm</h4>
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Xử lý tài chính</p>
                         </div>
                         <div className="bg-rose-50 px-4 py-2 rounded-xl text-[10px] font-black text-rose-600 uppercase">
-                           +{ (stats?.borrowStats?.unpaidFines || 0).toLocaleString() }đ Chờ thu
+                            +{(stats?.borrowStats?.unpaidViolationAmount || 0).toLocaleString()}đ Chờ thu
                         </div>
                     </div>
                     <div className="space-y-8 mt-10">
-                        {stats?.borrowStats?.totalFines > 0 ? (
-                           <>
-                              <div className="relative h-4 w-full bg-slate-50 rounded-full overflow-hidden">
-                                 <div 
-                                    className="absolute h-full bg-emerald-500 rounded-full shadow-lg shadow-emerald-500/20 transition-all duration-1000" 
-                                    style={{ width: `${Math.round(((stats.borrowStats.totalFines - stats.borrowStats.unpaidFines) / stats.borrowStats.totalFines) * 100)}%` }}
-                                 ></div>
-                              </div>
-                              <div className="grid grid-cols-2 gap-6">
-                                  <div className="p-6 bg-slate-50 rounded-3xl">
-                                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Đã thu hồi</p>
-                                      <h5 className="text-2xl font-black text-slate-900">{(stats?.borrowStats?.totalFines - stats?.borrowStats?.unpaidFines || 0).toLocaleString()}đ</h5>
-                                      <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 mt-2">
-                                          <CheckCircle2 size={12} /> {Math.round(((stats.borrowStats.totalFines - stats.borrowStats.unpaidFines) / stats.borrowStats.totalFines) * 100)}% hoàn tất
-                                      </div>
-                                  </div>
-                                  <div className="p-6 bg-slate-50 rounded-3xl">
-                                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Cần thu thêm</p>
-                                      <h5 className="text-2xl font-black text-slate-900">{(stats?.borrowStats?.unpaidFines || 0).toLocaleString()}đ</h5>
-                                      <div className="flex items-center gap-1 text-[10px] font-bold text-rose-500 mt-2">
-                                          <Clock size={12} /> {Math.round((stats.borrowStats.unpaidFines / stats.borrowStats.totalFines) * 100)}% tồn đọng
-                                      </div>
-                                  </div>
-                              </div>
-                           </>
+                        {stats?.borrowStats?.totalViolationAmount > 0 ? (
+                            <>
+                                <div className="relative h-4 w-full bg-slate-50 rounded-full overflow-hidden">
+                                    <div
+                                        className="absolute h-full bg-emerald-500 rounded-full shadow-lg shadow-emerald-500/20 transition-all duration-1000"
+                                        style={{ width: `${Math.round(((stats.borrowStats.totalViolationAmount - stats.borrowStats.unpaidViolationAmount) / stats.borrowStats.totalViolationAmount) * 100)}%` }}
+                                    ></div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-6">
+                                    <div className="p-6 bg-slate-50 rounded-3xl">
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Đã thu hồi</p>
+                                        <h5 className="text-2xl font-black text-slate-900">{(stats?.borrowStats?.totalViolationAmount - stats?.borrowStats?.unpaidViolationAmount || 0).toLocaleString()}đ</h5>
+                                        <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 mt-2">
+                                            <CheckCircle2 size={12} /> {Math.round(((stats.borrowStats.totalViolationAmount - stats.borrowStats.unpaidViolationAmount) / stats.borrowStats.totalViolationAmount) * 100)}% hoàn tất
+                                        </div>
+                                    </div>
+                                    <div className="p-6 bg-slate-50 rounded-3xl">
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Cần thu thêm</p>
+                                        <h5 className="text-2xl font-black text-slate-900">{(stats?.borrowStats?.unpaidViolationAmount || 0).toLocaleString()}đ</h5>
+                                        <div className="flex items-center gap-1 text-[10px] font-bold text-rose-500 mt-2">
+                                            <Clock size={12} /> {Math.round((stats.borrowStats.unpaidViolationAmount / stats.borrowStats.totalViolationAmount) * 100)}% tồn đọng
+                                        </div>
+                                    </div>
+                                </div>
+                            </>
                         ) : (
-                           <div className="py-20 text-center space-y-4 bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-100">
-                               <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto text-slate-200">
-                                  <TrendingUp size={32} />
-                               </div>
-                               <p className="text-xs font-black text-slate-300 uppercase tracking-[0.2em]">Chưa có dữ liệu phí phạt</p>
-                           </div>
+                            <div className="py-20 text-center space-y-4 bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-100">
+                                <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto text-slate-200">
+                                    <TrendingUp size={32} />
+                                </div>
+                                <p className="text-xs font-black text-slate-300 uppercase tracking-[0.2em]">Chưa có dữ liệu vi phạm</p>
+                            </div>
                         )}
                     </div>
                 </div>

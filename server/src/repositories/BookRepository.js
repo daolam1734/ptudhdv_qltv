@@ -25,9 +25,11 @@ class BookRepository extends BaseRepository {
     const books = await this.model
       .find({ $text: { $search: searchTerm }, isDeleted: { $ne: true } })
       .select({ score: { $meta: 'textScore' } })
+      .populate('categoryId', 'name')
       .sort({ score: { $meta: 'textScore' } })
       .skip(skip)
-      .limit(limit);
+      .limit(limit)
+      .lean();
 
     const total = await this.model.countDocuments({
       $text: { $search: searchTerm },
@@ -45,8 +47,8 @@ class BookRepository extends BaseRepository {
     };
   }
 
-  async findByGenre(category, options = {}) {
-    return await this.findAll({ category }, options);
+  async findByCategoryId(categoryId, options = {}) {
+    return await this.findAll({ categoryId }, options);
   }
 
   async findByAuthor(author, options = {}) {
@@ -86,10 +88,27 @@ class BookRepository extends BaseRepository {
       { $match: { isDeleted: { $ne: true } } },
       {
         $group: {
-          _id: '$category',
+          _id: '$categoryId',
           count: { $sum: 1 },
           totalQuantity: { $sum: '$quantity' },
           available: { $sum: '$available' }
+        }
+      },
+      {
+        $lookup: {
+          from: 'categories',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'categoryInfo'
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          name: { $ifNull: [{ $arrayElemAt: ['$categoryInfo.name', 0] }, "Chưa phân loại"] },
+          count: 1,
+          totalQuantity: 1,
+          available: 1
         }
       },
       { $sort: { count: -1 } }
@@ -115,20 +134,24 @@ class BookRepository extends BaseRepository {
       { $match: { isDeleted: { $ne: true } } },
       {
         $group: {
-          _id: '$category',
+          _id: '$categoryId',
           count: { $sum: 1 }
         }
       }
     ]);
 
     const countMap = counts.reduce((acc, curr) => {
-      acc[curr._id] = curr.count;
+      if (curr._id) {
+        acc[curr._id.toString()] = curr.count;
+      }
       return acc;
     }, {});
 
     return categories.map(cat => ({
+      _id: cat._id,
       name: cat.name,
-      count: countMap[cat.name] || 0
+      description: cat.description,
+      count: countMap[cat._id.toString()] || 0
     }));
   }
 }

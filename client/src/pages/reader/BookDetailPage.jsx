@@ -21,6 +21,7 @@ import bookService from "../../services/bookService";
 import readerService from "../../services/readerService";
 import borrowService from "../../services/borrowService";
 import { useAuth } from "../../context/AuthContext";
+import { useBasket } from "../../context/BasketContext";
 import ConfirmModal from "../../components/common/ConfirmModal";
 import toast from "react-hot-toast";
 
@@ -28,31 +29,33 @@ const BookDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
+  const { addToBasket } = useBasket();
   
   const [book, setBook] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [msg, setMsg] = useState({ type: "", text: "" });
-  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [quantity, setQuantity] = useState(1);
+
+  const fetchBook = async () => {
+    try {
+      setLoading(true);
+      const response = await bookService.getById(id);
+      setBook(response.data);
+      
+      if (isAuthenticated) {
+        const favResponse = await readerService.getFavorites();
+        const favoriteIds = (favResponse.data || []).map(b => b._id);
+        setIsFavorite(favoriteIds.includes(id));
+      }
+    } catch (error) {
+      console.error("Error fetching book details:", error);
+      toast.error("Không thể tải thông tin sách.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchBook = async () => {
-      try {
-        const response = await bookService.getById(id);
-        setBook(response.data);
-        
-        if (isAuthenticated) {
-          const favResponse = await readerService.getFavorites();
-          const favoriteIds = favResponse.data.map(b => b._id);
-          setIsFavorite(favoriteIds.includes(id));
-        }
-      } catch (error) {
-        console.error("Error fetching book details:", error);
-        setMsg({ type: "error", text: "Không thể tải thông tin sách." });
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchBook();
   }, [id, isAuthenticated]);
 
@@ -76,21 +79,20 @@ const BookDetailPage = () => {
     }
   };
 
-  const handleBorrow = async () => {
-    try {
-      const response = await borrowService.create({ bookId: id });
-      if (response.success) {
-        setMsg({ type: "success", text: "Đã gửi yêu cầu mượn sách thành công! Vui lòng đến quầy để nhận sách." });
-        // Refresh book data to update availability
-        const updatedBook = await bookService.getById(id);
-        setBook(updatedBook.data);
-      } else {
-        setMsg({ type: "error", text: response.message || "Không thể thực hiện yêu cầu mượn sách." });
-      }
-    } catch (error) {
-      setMsg({ type: "error", text: "Lỗi hệ thống khi mượn sách." });
+  const handleAddToBasket = () => {
+    if (!isAuthenticated) {
+      toast.error("Vui lòng đăng nhập để mượn sách");
+      navigate('/login');
+      return;
     }
-    setTimeout(() => setMsg({ type: "", text: "" }), 5000);
+
+    if (book.available === 0) {
+        toast.error("Sách hiện đã hết, không thể mượn");
+        return;
+    }
+
+    const success = addToBasket(book, quantity);
+    // Removed automatic redirect to focus on better interaction
   };
 
   if (loading) {
@@ -145,20 +147,6 @@ const BookDetailPage = () => {
         </div>
       </div>
 
-      {/* Alert Message */}
-      {msg.text && (
-        <div className={`fixed top-24 right-6 z-[100] px-6 py-4 rounded-xl shadow-2xl flex items-center gap-4 animate-in slide-in-from-right duration-500 border-l-[6px] ${
-          msg.type === "success" ? "bg-white border-emerald-500 text-emerald-700" : "bg-white border-rose-500 text-rose-700"
-        }`}>
-          <div className={`p-2 rounded-full ${msg.type === "success" ? "bg-emerald-50" : "bg-rose-50"}`}>
-            {msg.type === "success" ? <CheckCircle2 size={24} /> : <AlertCircle size={24} />}
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-gray-400 mb-0.5">{msg.type === "success" ? "Thành công" : "Thông báo lỗi"}</p>
-            <p className="font-bold text-gray-900">{msg.text}</p>
-          </div>
-        </div>
-      )}
 
       <div className="max-w-7xl mx-auto px-6 mt-12">
         <div className="bg-white rounded-[3rem] shadow-xl shadow-primary/5 border border-gray-100 overflow-hidden">
@@ -212,7 +200,7 @@ const BookDetailPage = () => {
             <div className="lg:col-span-7 p-8 lg:p-12 space-y-10">
               <div className="space-y-4">
                 <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/5 text-primary rounded-xl text-xs font-bold uppercase tracking-wider">
-                  <Layers size={14} /> {book.category}
+                  <Layers size={14} /> {book.categoryId?.name || book.category}
                 </div>
                 <h1 className="text-4xl lg:text-5xl font-bold text-neutral-dark leading-[1.1]">{book.title}</h1>
                 <div className="flex items-center gap-4">
@@ -285,45 +273,67 @@ const BookDetailPage = () => {
               </div>
 
               {/* Action Area */}
-              <div className="pt-8 border-t border-gray-100 flex flex-col sm:flex-row gap-4 items-center">
+              <div className="pt-8 border-t border-gray-100 flex flex-col gap-6">
                  {isAuthenticated ? (
-                   <button 
-                      onClick={() => setIsConfirmOpen(true)}
-                      disabled={book.available === 0}
-                      className="w-full sm:flex-[3] py-6 bg-primary text-white rounded-2xl font-bold hover:bg-primary/90 shadow-2xl shadow-primary/20 transition-all active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed group"
-                   >
-                      <ShoppingBag size={24} className="group-hover:animate-bounce" />
-                      YÊU CẦU MƯỢN SÁCH NGAY
-                   </button>
+                   <div className="flex flex-col sm:flex-row gap-4 items-center w-full">
+                      {book.available > 0 && (
+                        <div className="flex items-center bg-gray-100 p-1 rounded-2xl border border-gray-200">
+                          <button 
+                            onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                            className="w-12 h-12 flex items-center justify-center font-bold text-xl hover:bg-white rounded-xl transition-colors"
+                          >
+                            −
+                          </button>
+                          <span className="w-12 text-center font-bold text-lg">{quantity}</span>
+                          <button 
+                            onClick={() => setQuantity(Math.min(book.available, quantity + 1))}
+                            className="w-12 h-12 flex items-center justify-center font-bold text-xl hover:bg-white rounded-xl transition-colors"
+                          >
+                            +
+                          </button>
+                        </div>
+                      )}
+                      
+                      <button 
+                          onClick={handleAddToBasket}
+                          disabled={book.available === 0}
+                          className="flex-1 py-6 bg-primary text-white rounded-2xl font-bold hover:bg-primary/90 shadow-2xl shadow-primary/20 transition-all active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed group"
+                      >
+                          <ShoppingBag size={24} className="group-hover:animate-bounce" />
+                          {book.available > 0 ? "THÊM VÀO TỦ SÁCH MƯỢN" : "SÁCH HIỆN ĐÃ HẾT"}
+                      </button>
+                   </div>
                  ) : (
                    <button 
                       onClick={() => navigate("/login")}
-                      className="w-full sm:flex-[3] py-6 bg-neutral-dark text-white rounded-2xl font-bold hover:bg-primary transition-all active:scale-95 flex items-center justify-center gap-3 shadow-xl"
+                      className="w-full py-6 bg-neutral-dark text-white rounded-2xl font-bold hover:bg-primary transition-all active:scale-95 flex items-center justify-center gap-3 shadow-xl"
                    >
                       <LogIn size={24} />
                       ĐĂNG NHẬP ĐỂ MƯỢN SÁCH
                    </button>
                  )}
-                 <button 
-                    onClick={handleToggleFavorite}
-                    className={`w-full sm:w-auto p-6 rounded-2xl font-bold transition-all active:scale-95 flex items-center justify-center gap-3 border-2 ${
-                      isFavorite 
-                      ? "bg-rose-50 border-rose-200 text-rose-500 hover:bg-rose-100" 
-                      : "bg-white border-gray-100 text-gray-500 hover:bg-gray-50 hover:text-rose-500"
-                    }`}
-                    title={isFavorite ? "Bỏ yêu thích" : "Thêm vào yêu thích"}
-                 >
-                    <Heart size={24} fill={isFavorite ? "currentColor" : "none"} className={isFavorite ? "animate-pulse" : ""} />
-                    <span className="sm:hidden">Yêu thích</span>
-                 </button>
-                 <div className="hidden lg:flex flex-col items-center justify-center px-8 border-l border-gray-100">
-                    <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Đánh giá</p>
-                    <div className="flex text-amber-400">
-                       <Star size={16} fill="currentColor" />
-                       <Star size={16} fill="currentColor" />
-                       <Star size={16} fill="currentColor" />
-                       <Star size={16} fill="currentColor" />
-                       <Star size={16} />
+                 <div className="flex items-center gap-4">
+                    <button 
+                        onClick={handleToggleFavorite}
+                        className={`flex-1 p-6 rounded-2xl font-bold transition-all active:scale-95 flex items-center justify-center gap-3 border-2 ${
+                        isFavorite 
+                        ? "bg-rose-50 border-rose-200 text-rose-500 hover:bg-rose-100" 
+                        : "bg-white border-gray-100 text-gray-500 hover:bg-gray-50 hover:text-rose-500"
+                        }`}
+                        title={isFavorite ? "Bỏ yêu thích" : "Thêm vào yêu thích"}
+                    >
+                        <Heart size={24} fill={isFavorite ? "currentColor" : "none"} className={isFavorite ? "animate-pulse" : ""} />
+                        <span>{isFavorite ? "Đã yêu thích" : "Yêu thích"}</span>
+                    </button>
+                    <div className="hidden lg:flex flex-col items-center justify-center px-8 border-l border-gray-100">
+                        <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">Đánh giá</p>
+                        <div className="flex text-amber-400">
+                        <Star size={16} fill="currentColor" />
+                        <Star size={16} fill="currentColor" />
+                        <Star size={16} fill="currentColor" />
+                        <Star size={16} fill="currentColor" />
+                        <Star size={16} />
+                        </div>
                     </div>
                  </div>
               </div>
@@ -331,15 +341,6 @@ const BookDetailPage = () => {
           </div>
         </div>
       </div>
-
-      <ConfirmModal 
-        isOpen={isConfirmOpen}
-        onClose={() => setIsConfirmOpen(false)}
-        onConfirm={handleBorrow}
-        title="Xác nhận mượn sách"
-        message={`Bạn có chắc chắn muốn gửi yêu cầu mượn cuốn sách "${book.title}" không?`}
-        confirmText="Xác nhận mượn"
-      />
     </div>
   );
 };

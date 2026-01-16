@@ -49,9 +49,9 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
-  const isAdmin = user?.role === 'admin';
-  const isStaff = ['admin', 'librarian'].includes(user?.role);
-  const isReader = user?.role === 'reader';
+  const isAdmin = user?.role?.toLowerCase() === 'admin';
+  const isStaff = ['admin', 'librarian'].includes(user?.role?.toLowerCase());
+  const isReader = user?.role?.toLowerCase() === 'reader';
   const isAuthenticated = !!user;
 
   return (

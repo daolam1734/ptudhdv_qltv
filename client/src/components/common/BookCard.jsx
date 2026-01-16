@@ -73,7 +73,7 @@ const BookCard = ({
         <div className="mb-6 space-y-3">
           <div className="flex items-center justify-between">
             <span className="px-3 py-1 bg-primary/10 text-primary text-[9px] font-black uppercase rounded-lg tracking-widest">
-              {book.category || "Tổng hợp"}
+              {book.categoryId?.name || book.category || "Tổng hợp"}
             </span>
             <div className="flex items-center gap-1.5 text-[11px] font-black text-amber-500">
               <Star size={12} fill="currentColor" />
@@ -115,7 +115,7 @@ const BookCard = ({
               }`}
             >
               <ShoppingBag size={16} strokeWidth={2.5} />
-              Đăng ký mượn
+              THÊM VÀO TỦ SÁCH
             </button>
           ) : (
             <button

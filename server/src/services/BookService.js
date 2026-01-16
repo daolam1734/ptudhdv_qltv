@@ -6,10 +6,11 @@ class BookService extends BaseService {
   }
 
   async getAllBooks(filter = {}, options = {}) {
-    const { category, status, author, publisher, available } = filter;
+    const { category, categoryId, status, author, publisher, available } = filter;
 
     const query = {};
-    if (category) query.category = category;
+    if (category) query.categoryId = category;
+    if (categoryId) query.categoryId = categoryId;
     if (status) query.status = status;
     if (author) query.author = { $regex: author, $options: "i" };
     if (publisher) query.publisher = { $regex: publisher, $options: "i" };
@@ -17,7 +18,20 @@ class BookService extends BaseService {
       query.available = available === "true" ? { $gt: 0 } : 0;
     }
 
+    if (!options.populate) {
+      options.populate = 'categoryId';
+    }
+
+    if (!options.select) {
+      // Exclude large fields for list view to improve performance on weak networks
+      options.select = '-description -tags -addedBy -lastUpdatedBy';
+    }
+
     return await this.repository.findAll(query, options);
+  }
+
+  async getById(id, populate = 'categoryId') {
+    return await super.getById(id, populate);
   }
 
   async createBook(data) {

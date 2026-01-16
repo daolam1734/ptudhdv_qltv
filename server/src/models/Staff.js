@@ -34,6 +34,12 @@ const staffSchema = new mongoose.Schema(
       trim: true,
       maxlength: [100, 'Full name cannot exceed 100 characters']
     },
+    idCard: {
+      type: String,
+      unique: true,
+      sparse: true,
+      trim: true
+    },
     phone: {
       type: String,
       trim: true,

@@ -32,24 +32,31 @@ const StaffDashboardPage = () => {
   const [recentBorrows, setRecentBorrows] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Chào buổi sáng";
+    if (hour < 18) return "Chào buổi chiều";
+    return "Chào buổi tối";
+  };
+
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
         const [statsRes, borrowsRes] = await Promise.all([
           reportService.getLibraryStats(),
-          borrowService.getAll({ limit: 5 })
+          borrowService.getAll({ limit: 5, status: 'pending,approved,borrowed,overdue' })
         ]);
         
         const data = statsRes.data;
         setStats({
-          totalBooks: data.bookStats.totalBooks,
+          totalBooks: data.bookStats.total,
           totalReaders: data.readerStats.totalReaders,
-          activeBorrows: data.borrowStats.activeBorrows,
-          overdueBorrows: data.borrowStats.overdueBorrows,
-          pendingRequests: data.borrowStats.pendingRequests
+          activeBorrows: data.borrowStats?.activeBorrows || data.borrowStats?.active || 0,
+          overdueBorrows: data.borrowStats?.overdueBorrows || data.borrowStats?.overdue || 0,
+          pendingRequests: data.borrowStats?.pendingRequests || data.borrowStats?.pending || 0
         });
-        setRecentBorrows(borrowsRes.data);
+        setRecentBorrows(borrowsRes.data || []);
         setLoading(false);
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
@@ -68,7 +75,7 @@ const StaffDashboardPage = () => {
 
   const quickActions = [
     { icon: <PlusCircle size={20} />, label: "Cho mượn sách", path: "/borrows", desc: "Tạo phiếu mượn mới" },
-    { icon: <RotateCcw size={20} />, label: "Tiếp nhận trả sách", path: "/borrows", desc: "Xử lý trả và phạt" },
+    { icon: <RotateCcw size={20} />, label: "Tiếp nhận trả sách", path: "/borrows", desc: "Xử lý trả & vi phạm" },
     { icon: <Search size={20} />, label: "Tra cứu kho", path: "/books", desc: "Kiểm tra vị trí sách" },
     { icon: <UserCheck size={20} />, label: "Đăng ký độc giả", path: "/readers", desc: "Cấp thẻ thư viện" },
   ];
@@ -86,8 +93,15 @@ const StaffDashboardPage = () => {
       {/* Welcome Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h1 className="text-3xl font-bold text-neutral-dark tracking-tight">Chào buổi sáng, {user?.fullName}!</h1>
-          <p className="text-gray-500 font-medium mt-1">Hôm nay bạn có {stats.overdueBorrows} sách quá hạn cần xử lý.</p>
+          <h1 className="text-3xl font-bold text-neutral-dark tracking-tight">
+            {getGreeting()}, {user?.fullName || "Thủ thư"}!
+          </h1>
+          <p className="text-gray-500 font-medium mt-1">
+            Hôm nay bạn có <span className="text-rose-600 font-bold">{stats.overdueBorrows}</span> sách quá hạn 
+            {stats.pendingRequests > 0 && (
+              <> và <span className="text-amber-600 font-bold">{stats.pendingRequests}</span> yêu cầu mượn</>
+            )} cần xử lý.
+          </p>
         </div>
         <div className="flex items-center gap-3 bg-white p-2 rounded-2xl border border-gray-100 shadow-sm">
            <div className="px-4 py-2 bg-primary-light/10 text-primary rounded-xl text-xs font-bold uppercase tracking-wider">
@@ -121,6 +135,49 @@ const StaffDashboardPage = () => {
              </div>
           </div>
         ))}
+      </div>
+
+      {/* Alert Banners */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {stats.overdueBorrows > 0 && (
+          <div className="bg-gradient-to-br from-rose-500 to-rose-600 rounded-[2rem] p-8 text-white shadow-xl shadow-rose-500/20 relative overflow-hidden group">
+            <div className="relative z-10">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-white/20 rounded-xl backdrop-blur-md">
+                   <AlertCircle size={24} />
+                </div>
+                <h4 className="text-xl font-bold">Cảnh báo Quá hạn</h4>
+              </div>
+              <p className="text-rose-100 text-sm leading-relaxed mb-6">
+                Có <span className="font-black text-white underline">{stats.overdueBorrows} trường hợp</span> trả sách muộn. Vui lòng liên hệ độc giả và thu hồi sách ngay để tránh thất thoát.
+              </p>
+              <Link to="/borrows?status=overdue" className="inline-flex items-center gap-2 bg-white text-rose-600 px-6 py-3 rounded-xl font-bold text-sm hover:bg-rose-50 transition-colors">
+                Xem danh sách quá hạn <ArrowRight size={18} />
+              </Link>
+            </div>
+            <AlertCircle className="absolute -right-8 -bottom-8 w-48 h-48 opacity-10 group-hover:scale-110 transition-transform duration-700" />
+          </div>
+        )}
+
+        {stats.pendingRequests > 0 && (
+          <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-[2rem] p-8 text-white shadow-xl shadow-orange-500/20 relative overflow-hidden group">
+            <div className="relative z-10">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-white/20 rounded-xl backdrop-blur-md">
+                   <Clock size={24} />
+                </div>
+                <h4 className="text-xl font-bold">Yêu cầu Đang chờ</h4>
+              </div>
+              <p className="text-amber-100 text-sm leading-relaxed mb-6">
+                Bạn có <span className="font-black text-white underline">{stats.pendingRequests} đăng ký mượn sách</span> mới từ độc giả đang đợi được phê duyệt trong hệ thống.
+              </p>
+              <Link to="/borrows?status=pending" className="inline-flex items-center gap-2 bg-white text-amber-600 px-6 py-3 rounded-xl font-bold text-sm hover:bg-amber-50 transition-colors">
+                Đến trang phê duyệt mượn <ArrowRight size={18} />
+              </Link>
+            </div>
+            <Clock className="absolute -right-8 -bottom-8 w-48 h-48 opacity-10 group-hover:scale-110 transition-transform duration-700" />
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -196,8 +253,18 @@ const StaffDashboardPage = () => {
                               <span className={`text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded ${
                                 borrow.status === 'returned' ? 'text-emerald-600 bg-emerald-50' : 
                                 borrow.status === 'overdue' ? 'text-red-600 bg-red-50' : 
-                                borrow.status === 'pending' ? 'text-amber-600 bg-amber-50' : 'text-blue-600 bg-blue-50'
-                              }`}>{borrow.status === 'pending' ? 'Chờ duyệt' : borrow.status}</span>
+                                borrow.status === 'pending' ? 'text-amber-600 bg-amber-50' : 
+                                borrow.status === 'approved' ? 'text-blue-600 bg-blue-50' : 
+                                borrow.status === 'borrowed' ? 'text-indigo-600 bg-indigo-50' :
+                                borrow.status === 'cancelled' ? 'text-gray-600 bg-gray-50' : 'text-blue-600 bg-blue-50'
+                              }`}>
+                                {borrow.status === 'pending' ? 'Chờ duyệt' : 
+                                 borrow.status === 'approved' ? 'Đã duyệt' :
+                                 borrow.status === 'borrowed' ? 'Đang mượn' :
+                                 borrow.status === 'overdue' ? 'Quá hạn' :
+                                 borrow.status === 'returned' ? 'Đã trả' :
+                                 borrow.status === 'cancelled' ? 'Đã hủy' : borrow.status}
+                              </span>
                               <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">{new Date(borrow.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
                            </div>
                         </div>

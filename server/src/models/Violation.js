@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const fineSchema = new mongoose.Schema(
+const violationSchema = new mongoose.Schema(
     {
         readerId: {
             type: mongoose.Schema.Types.ObjectId,
@@ -38,7 +38,7 @@ const fineSchema = new mongoose.Schema(
     }
 );
 
-fineSchema.index({ readerId: 1, status: 1 });
-fineSchema.index({ borrowId: 1 });
+violationSchema.index({ readerId: 1, status: 1 });
+violationSchema.index({ borrowId: 1 });
 
-module.exports = mongoose.model('Fine', fineSchema);
+module.exports = mongoose.model('Violation', violationSchema);

@@ -1,13 +1,52 @@
-import React from "react";
-import { useLocation } from "react-router-dom";
+import React, { useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useBasket } from "../context/BasketContext";
 import Header from "../components/common/Header";
 import Footer from "../components/common/Footer";
+import FloatingBasket from "../components/reader/FloatingBasket";
+import borrowService from "../services/borrowService";
 import { Library } from "lucide-react";
+import { toast } from "react-hot-toast";
 
 const ReaderLayout = ({ children }) => {
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
+  const { basket, setBasket, isBasketOpen, setIsBasketOpen, removeFromBasket, clearBasket } = useBasket();
   const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    if (searchParams.get('basket') === 'open' && location.pathname !== '/reader/basket') {
+        setIsBasketOpen(true);
+    }
+  }, [location.search, location.pathname]);
+
+  const handleMultiBorrow = async () => {
+    if (basket.length === 0) return;
+    
+    const bookIds = [];
+    basket.forEach(item => {
+        for (let i = 0; i < item.quantity; i++) {
+            bookIds.push(item.book._id);
+        }
+    });
+
+    try {
+      const res = await borrowService.create({ bookIds });
+      
+      if (res.success) {
+        toast.success(`Đã gửi yêu cầu mượn ${bookIds.length} cuốn sách thành công!`, {
+          duration: 5000,
+          icon: '📚'
+        });
+        clearBasket();
+        setIsBasketOpen(false);
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Lỗi hệ thống khi mượn sách");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col font-sans">
@@ -51,6 +90,17 @@ const ReaderLayout = ({ children }) => {
           {children}
         </div>
       </main>
+
+      {isAuthenticated && user?.role?.toLowerCase() === 'reader' && (
+        <FloatingBasket 
+          basket={basket}
+          onRemove={removeFromBasket}
+          onClear={clearBasket}
+          onSubmit={handleMultiBorrow}
+          isOpen={isBasketOpen}
+          setIsOpen={setIsBasketOpen}
+        />
+      )}
 
       <Footer />
     </div>

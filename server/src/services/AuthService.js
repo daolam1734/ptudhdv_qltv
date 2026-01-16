@@ -7,13 +7,14 @@ class AuthService extends BaseService {
     this.readerRepository = readerRepository;
   }
 
-  generateToken(user) {
+  generateToken(user, userType) {
+    const role = user.role || (userType === 'reader' ? 'reader' : (userType === 'staff' ? 'librarian' : undefined));
     return jwt.sign(
       {
         id: user._id,
         username: user.username,
         email: user.email,
-        role: user.role
+        role: role
       },
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
@@ -30,7 +31,7 @@ class AuthService extends BaseService {
     }
 
     const staff = await this.repository.create(data);
-    const token = this.generateToken(staff);
+    const token = this.generateToken(staff, 'staff');
 
     return { user: staff, token };
   }
@@ -58,7 +59,7 @@ class AuthService extends BaseService {
 
     const reader = await this.readerRepository.create(readerData);
     console.log(`[AuthService] Registration successful: ${reader.username}`);
-    const token = this.generateToken(reader);
+    const token = this.generateToken(reader, 'reader');
 
     return { user: reader, token };
   }
@@ -112,15 +113,20 @@ class AuthService extends BaseService {
       await this.readerRepository.updateLastLogin(user._id);
     }
 
-    const token = this.generateToken(user);
+    const token = this.generateToken(user, userType);
     user.password = undefined;
+
+    // Ensure role exists in the returned user object
+    if (!user.role) {
+      user.role = userType === 'reader' ? 'reader' : 'librarian';
+    }
 
     return { user, token };
   }
 
   async changePassword(userId, userRole, oldPassword, newPassword) {
     const repository = userRole === 'reader' ? this.readerRepository : this.repository;
-    
+
     // Explicitly select password since it has select: false in schema
     const user = await repository.model.findById(userId).select('+password');
     if (!user) throw new Error('User not found');
@@ -130,7 +136,7 @@ class AuthService extends BaseService {
 
     user.password = newPassword;
     await user.save();
-    
+
     return { message: 'Password changed successfully' };
   }
 

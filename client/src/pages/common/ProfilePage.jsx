@@ -25,6 +25,7 @@ const ProfilePage = () => {
   const [profileData, setProfileData] = useState({
     fullName: '',
     email: '',
+    idCard: '',
     phoneNumber: '',
     address: '',
     birthDate: ''
@@ -41,6 +42,7 @@ const ProfilePage = () => {
       setProfileData({
         fullName: user.fullName || '',
         email: user.email || '',
+        idCard: user.idCard || '',
         phoneNumber: user.phone || user.phoneNumber || '',
         address: user.address || '',
         birthDate: user.birthDate ? new Date(user.birthDate).toISOString().split('T')[0] : ''
@@ -187,6 +189,20 @@ const ProfilePage = () => {
                     />
                   </div>
                   <p className="text-[11px] text-slate-400 ml-1">Email không thể thay đổi sau khi đăng ký</p>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-slate-700">Số CCCD/CMND</label>
+                  <div className="relative group">
+                    <Shield className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={18} />
+                    <input 
+                      type="text"
+                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-not-allowed opacity-75"
+                      value={profileData.idCard}
+                      disabled
+                    />
+                  </div>
+                  <p className="text-[11px] text-slate-400 ml-1">CCCD không thể thay đổi để bảo mật thông tin</p>
                 </div>
 
                 <div className="space-y-2">

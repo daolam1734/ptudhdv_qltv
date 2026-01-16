@@ -99,9 +99,9 @@ class AuthController {
 
     const { user, token } = await this.authService.login(username, password);
     const roleMapping = { 'admin': 'ADMIN', 'librarian': 'LIBRARIAN', 'reader': 'READER' };
-    
-    ApiResponse.success(res, { 
-      token, 
+
+    ApiResponse.success(res, {
+      token,
       role: roleMapping[user.role] || user.role.toUpperCase(),
       user: {
         id: user._id,

@@ -29,7 +29,7 @@ const borrowSchema = new mongoose.Schema(
         },
         status: {
             type: String,
-            enum: ['pending', 'approved', 'borrowed', 'returned', 'overdue', 'lost', 'damaged', 'damaged_heavy', 'rejected'],
+            enum: ['pending', 'approved', 'borrowed', 'returned', 'overdue', 'lost', 'damaged', 'damaged_heavy', 'rejected', 'cancelled'],
             default: 'pending'
         },
         renewalCount: {
@@ -40,11 +40,15 @@ const borrowSchema = new mongoose.Schema(
             type: Number,
             default: 2
         },
-        fine: {
+        violation: {
             amount: { type: Number, default: 0 },
             reason: String,
             isPaid: { type: Boolean, default: false },
             paidAt: Date
+        },
+        borrowSessionId: {
+            type: String,
+            index: true
         },
         notes: String
     },

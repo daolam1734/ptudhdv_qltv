@@ -18,7 +18,7 @@ import {
   ChevronRight
 } from "lucide-react";
 
-const FinesPage = () => {
+const ViolationsPage = () => {
   const [readers, setReaders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -27,14 +27,14 @@ const FinesPage = () => {
   const [message, setMessage] = useState({ type: "", text: "" });
 
   useEffect(() => {
-    fetchFinedReaders();
+    fetchViolatedReaders();
   }, []);
 
-  const fetchFinedReaders = async () => {
+  const fetchViolatedReaders = async () => {
     try {
       setLoading(true);
       const res = await readerService.getAll();
-      const finedOnly = res.data.filter(r => r.unpaidFines > 0);
+      const finedOnly = res.data.filter(r => r.unpaidViolations > 0);
       setReaders(finedOnly);
     } catch (err) {
       console.error("Failed to fetch readers", err);
@@ -43,17 +43,17 @@ const FinesPage = () => {
     }
   };
 
-  const handlePayFine = async (e) => {
+  const handlePayViolation = async (e) => {
     e.preventDefault();
     if (!selectedReader || !payAmount) return;
 
     try {
       const amount = parseInt(payAmount);
-      await readerService.payFine(selectedReader._id, amount);
+      await readerService.payViolation(selectedReader._id, amount);
       setMessage({ type: "success", text: `Đã thanh toán ${amount.toLocaleString()}đ cho độc giả ${selectedReader.fullName}` });
       setSelectedReader(null);
       setPayAmount("");
-      fetchFinedReaders();
+      fetchViolatedReaders();
       setTimeout(() => setMessage({ type: "", text: "" }), 5000);
     } catch (err) {
       setMessage({ type: "error", text: err.response?.data?.message || "Lỗi khi thanh toán" });
@@ -80,14 +80,14 @@ const FinesPage = () => {
       {/* Header Area */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Quản lý Tiền phạt</h1>
+          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Quản lý Vi phạm</h1>
           <p className="text-gray-500 font-medium mt-1">Thu phí quá hạn và bồi thường sách</p>
         </div>
         <div className="flex items-center gap-4 bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
           <div className="text-right hidden sm:block">
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider text-right">Tổng nợ tồn</p>
             <p className="text-xl font-extrabold text-primary">
-               {readers.reduce((acc, r) => acc + (r.unpaidFines || 0), 0).toLocaleString()}đ
+               {readers.reduce((acc, r) => acc + (r.unpaidViolations || 0), 0).toLocaleString()}đ
             </p>
           </div>
           <div className="w-px h-10 bg-gray-100 hidden sm:block"></div>
@@ -150,12 +150,12 @@ const FinesPage = () => {
                            </div>
                         </td>
                         <td className="px-6 py-5 text-right font-bold text-xl text-gray-900 tabular-nums">
-                           {reader.unpaidFines?.toLocaleString()} <span className="text-[10px] text-gray-400 font-medium">đ</span>
+                           {reader.unpaidViolations?.toLocaleString()} <span className="text-[10px] text-gray-400 font-medium">đ</span>
                         </td>
                         <td className="px-6 py-5">
                            <div className="flex justify-center">
-                              <span className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${reader.unpaidFines > 100000 ? "bg-red-50 text-red-600 border-red-100" : "bg-amber-50 text-amber-600 border-amber-100"}`}>
-                                 {reader.unpaidFines > 100000 ? "Nghiêm trọng" : "Chờ xử lý"}
+                              <span className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border ${reader.unpaidViolations > 100000 ? "bg-red-50 text-red-600 border-red-100" : "bg-amber-50 text-amber-600 border-amber-100"}`}>
+                                 {reader.unpaidViolations > 100000 ? "Nghiêm trọng" : "Chờ xử lý"}
                               </span>
                            </div>
                         </td>
@@ -179,7 +179,7 @@ const FinesPage = () => {
             <h3 className="text-lg font-bold text-gray-900">Thanh toán</h3>
             <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm">
                 {selectedReader ? (
-                    <form onSubmit={handlePayFine} className="space-y-6 animate-in fade-in slide-in-from-bottom duration-300">
+                    <form onSubmit={handlePayViolation} className="space-y-6 animate-in fade-in slide-in-from-bottom duration-300">
                         <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Người thanh toán</p>
                             <div className="flex items-center gap-3">
@@ -188,7 +188,7 @@ const FinesPage = () => {
                                 </div>
                                 <div>
                                     <p className="font-bold text-gray-900 leading-none">{selectedReader.fullName}</p>
-                                    <p className="text-[10px] font-bold text-primary mt-1 uppercase tracking-wider">Nợ: {selectedReader.unpaidFines?.toLocaleString()}đ</p>
+                                    <p className="text-[10px] font-bold text-primary mt-1 uppercase tracking-wider">Nợ: {selectedReader.unpaidViolations?.toLocaleString()}đ</p>
                                 </div>
                             </div>
                         </div>
@@ -237,4 +237,4 @@ const FinesPage = () => {
   );
 };
 
-export default FinesPage;
+export default ViolationsPage;

@@ -10,6 +10,7 @@ const RegisterPage = () => {
         password: '',
         confirmPassword: '',
         fullName: '',
+        idCard: '',
         phoneNumber: '',
         address: ''
     });
@@ -190,6 +191,24 @@ const RegisterPage = () => {
                                     className="block w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-semibold text-sm placeholder-gray-300"
                                     placeholder="Nguyễn Văn A"
                                     value={formData.fullName}
+                                    onChange={handleChange}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-semibold text-gray-500 ml-1">Số CCCD/CMND</label>
+                            <div className="relative group">
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-primary transition-colors">
+                                    <ShieldCheck size={16} />
+                                </div>
+                                <input
+                                    name="idCard"
+                                    type="text"
+                                    required
+                                    className="block w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all font-semibold text-sm placeholder-gray-300"
+                                    placeholder="012345678901"
+                                    value={formData.idCard}
                                     onChange={handleChange}
                                 />
                             </div>

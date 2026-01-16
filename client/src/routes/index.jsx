@@ -17,6 +17,7 @@ import ReaderBooksPage from "../pages/reader/ReaderBooksPage";
 import BookDetailPage from "../pages/reader/BookDetailPage";
 import ReaderHistoryPage from "../pages/reader/ReaderHistoryPage";
 import FavoritesPage from "../pages/reader/FavoritesPage";
+import BasketPage from "../pages/reader/BasketPage";
 import DashboardPage from "../pages/admin/DashboardPage";
 import ReadersPage from "../pages/admin/ReadersPage";
 import StaffPage from "../pages/admin/StaffPage";
@@ -24,7 +25,7 @@ import ReportsPage from "../pages/admin/ReportsPage";
 import StaffReportsPage from "../pages/staff/StaffReportsPage";
 import BooksPage from "../pages/staff/BooksPage";
 import BorrowsPage from "../pages/staff/BorrowsPage";
-import FinesPage from "../pages/staff/FinesPage";
+import ViolationsPage from "../pages/staff/ViolationsPage";
 import CategoriesPage from "../pages/staff/CategoriesPage";
 import StaffDashboardPage from "../pages/staff/StaffDashboardPage";
 import ProfilePage from "../pages/common/ProfilePage";
@@ -52,14 +53,14 @@ const AppRoutes = () => {
                     isAuthenticated && (user?.role === "admin" || user?.role === "librarian") ? (
                         user?.role === "admin" ? <AdminLayout><BooksPage /></AdminLayout> : <StaffLayout><BooksPage /></StaffLayout>
                     ) : (
-                         <PublicLayout><ReaderBooksPage /></PublicLayout>
+                         <ReaderLayout><ReaderBooksPage /></ReaderLayout>
                     )
                 } 
             />
 
             <Route 
                 path="/books/:id" 
-                element={<PublicLayout><BookDetailPage /></PublicLayout>} 
+                element={<ReaderLayout><BookDetailPage /></ReaderLayout>} 
             />
 
             <Route 
@@ -155,6 +156,15 @@ const AppRoutes = () => {
                 } 
             />
 
+            <Route 
+                path="/reader/basket" 
+                element={
+                    <PrivateRoute roles={["reader"]}>
+                        <ReaderLayout><BasketPage /></ReaderLayout>
+                    </PrivateRoute>
+                } 
+            />
+
             {/* Admin Only */}
             <Route 
                 path="/staff" 
@@ -202,10 +212,10 @@ const AppRoutes = () => {
             />
             
             <Route 
-                path="/fines" 
+                path="/violations" 
                 element={
                     <PrivateRoute roles={["admin", "librarian"]}>
-                         {user?.role === "admin" ? <AdminLayout><FinesPage /></AdminLayout> : <StaffLayout><FinesPage /></StaffLayout>}
+                         {user?.role === "admin" ? <AdminLayout><ViolationsPage /></AdminLayout> : <StaffLayout><ViolationsPage /></StaffLayout>}
                     </PrivateRoute>
                 } 
             />

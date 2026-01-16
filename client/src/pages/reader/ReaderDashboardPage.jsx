@@ -55,7 +55,7 @@ const ReaderDashboardPage = () => {
     if (isAuthenticated) {
       try {
         const response = await readerService.getFavorites();
-        setFavorites(response.data.map(book => book._id));
+        setFavorites((response.data || []).map(book => book._id));
       } catch (error) {
         console.error("Error fetching favorites:", error);
       }
@@ -96,7 +96,7 @@ const ReaderDashboardPage = () => {
         }
 
         if (isAuthenticated && favRes) {
-          setFavorites(favRes.data.map(b => b._id));
+          setFavorites((favRes.data || []).map(b => b._id));
         }
 
         setNewBooks(booksRes.data?.books || booksRes.data || []);

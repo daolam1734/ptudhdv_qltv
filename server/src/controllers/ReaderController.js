@@ -2,9 +2,10 @@ const asyncHandler = require('../middlewares/asyncHandler');
 const ApiResponse = require('../utils/ApiResponse');
 
 class ReaderController {
-  constructor(readerService, borrowService) {
+  constructor(readerService, borrowService, violationService) {
     this.readerService = readerService;
     this.borrowService = borrowService;
+    this.violationService = violationService;
   }
 
   getAllReaders = asyncHandler(async (req, res) => {
@@ -54,6 +55,13 @@ class ReaderController {
   getFavorites = asyncHandler(async (req, res) => {
     const favorites = await this.readerService.getFavorites(req.user.id);
     ApiResponse.success(res, favorites, 'Lấy danh sách yêu thích thành công');
+  });
+
+  payViolation = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { amount } = req.body;
+    const result = await this.violationService.payViolationByReader(id, amount);
+    ApiResponse.success(res, result, `Đã thanh toán ${amount.toLocaleString()}đ thành công`);
   });
 }
 

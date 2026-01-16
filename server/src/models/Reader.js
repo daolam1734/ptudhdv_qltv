@@ -100,7 +100,7 @@ const readerSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Book'
     }],
-    unpaidFines: {
+    unpaidViolations: {
       type: Number,
       default: 0
     },

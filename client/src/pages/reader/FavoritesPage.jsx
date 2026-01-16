@@ -11,6 +11,7 @@ import {
 import readerService from "../../services/readerService";
 import borrowService from "../../services/borrowService";
 import { useAuth } from "../../context/AuthContext";
+import { useBasket } from "../../context/BasketContext";
 import ConfirmModal from "../../components/common/ConfirmModal";
 import BookCard from "../../components/common/BookCard";
 import { toast } from "react-hot-toast";
@@ -18,9 +19,9 @@ import { toast } from "react-hot-toast";
 const FavoritesPage = () => {
     const navigate = useNavigate();
     const { isAuthenticated, user } = useAuth();
+    const { addToBasket } = useBasket();
     const [favorites, setFavorites] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [borrowingBook, setBorrowingBook] = useState(null);
 
     const fetchFavorites = async () => {
         try {
@@ -50,16 +51,6 @@ const FavoritesPage = () => {
             toast.success(" Đã xóa khỏi danh sách yêu thích");
         } catch (error) {
             toast.error("Có lỗi xảy ra");
-        }
-    };
-
-    const handleBorrow = async (bookId) => {
-        try {
-            await borrowService.create({ bookId });
-            toast.success("Gửi yêu cầu mượn sách thành công! Vui lòng chờ quản thủ thư duyệt.");
-            setBorrowingBook(null);
-        } catch (error) {
-            toast.error(error.response?.data?.message || "Có lỗi xảy ra khi mượn sách");
         }
     };
 
@@ -118,21 +109,12 @@ const FavoritesPage = () => {
                             isAuthenticated={isAuthenticated}
                             isFavorite={true}
                             onToggleFavorite={(id) => handleRemoveFavorite(id)}
-                            onBorrow={setBorrowingBook}
+                            onBorrow={addToBasket}
                             onViewDetails={(id) => navigate(`/books/${id}`)}
                         />
                     ))}
                 </div>
             )}
-
-            <ConfirmModal 
-                isOpen={!!borrowingBook}
-                onClose={() => setBorrowingBook(null)}
-                onConfirm={() => handleBorrow(borrowingBook?._id)}
-                title="Xác nhận mượn sách"
-                message={`Bạn có chắc chắn muốn mượn cuốn "${borrowingBook?.title}" không?`}
-                confirmText="Xác nhận"
-            />
         </div>
     );
 };

@@ -30,7 +30,8 @@ const categorySchema = new mongoose.Schema(
 categorySchema.virtual('bookCount', {
   ref: 'Book',
   localField: '_id',
-  foreignField: 'categoryId' // We will add this to Book model
+  foreignField: 'categoryId',
+  count: true
 });
 
 const Category = mongoose.model('Category', categorySchema);

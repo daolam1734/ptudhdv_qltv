@@ -38,26 +38,47 @@ class BorrowController {
    *         description: Borrow record created
    */
   createBorrow = asyncHandler(async (req, res) => {
-    let { readerId, bookId, durationDays } = req.body;
+    let { readerId, bookId, bookIds, durationDays } = req.body;
     const isReader = req.user.role === "reader";
     if (isReader) readerId = req.user.id;
-    
-    if (!readerId || !bookId) {
-      return ApiResponse.error(res, "readerId and bookId are required", 400);
+
+    if (!readerId || (!bookId && (!bookIds || bookIds.length === 0))) {
+      return ApiResponse.error(res, "readerId and bookId/bookIds are required", 400);
     }
 
-    const record = await this.borrowService.borrowBook({ 
-      readerId, 
-      bookId, 
+    const record = await this.borrowService.borrowBook({
+      readerId,
+      bookId,
+      bookIds,
       staffId: isReader ? null : req.user.id,
-      durationDays 
+      durationDays
     });
     ApiResponse.success(res, record, isReader ? "Borrow request submitted successfully" : "Book borrow record created", 201);
   });
 
   /**
-   * @swagger
-   * /borrow/approve/{id}:
+   * @swagger   * /borrow/cancel/{id}:
+   *   patch:
+   *     summary: Cancel a pending borrow request (Reader only)
+   *     tags: [Borrow]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *     responses:
+   *       200:
+   *         description: Cancelled successfully
+   */
+  cancelBorrow = asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const record = await this.borrowService.cancelBorrow(id, req.user.id);
+    ApiResponse.success(res, record, "Yêu cầu mượn đã được hủy thành công");
+  });
+
+  /**
+   * @swagger   * /borrow/approve/{id}:
    *   patch:
    *     summary: Approve a pending borrow request (Staff only)
    *     tags: [Borrow]
@@ -171,14 +192,14 @@ class BorrowController {
   returnBook = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { status, notes } = req.body;
-    
+
     const result = await this.borrowService.returnBook(id, req.user.id, { status, notes });
-    
+
     let message = "Book returned successfully";
-    if (result.fine) {
-      message += `. A fine of ${result.fine.amount} VND was recorded due to ${result.fine.reason}.`;
+    if (result.violation) {
+      message += `. A violation fee of ${result.violation.amount} VND was recorded due to ${result.violation.reason}.`;
     }
-    
+
     ApiResponse.success(res, result, message);
   });
 
@@ -200,7 +221,7 @@ class BorrowController {
    */
   getReaderHistory = asyncHandler(async (req, res) => {
     let readerId = req.params.readerId;
-    
+
     // If no readerId in params, it's "my-history"
     if (!readerId) {
       if (req.user.role === "reader") {
@@ -213,7 +234,12 @@ class BorrowController {
     if (req.user.role === "reader" && req.user.id !== readerId.toString()) {
       return ApiResponse.error(res, "Access denied", 403);
     }
-    const history = await this.borrowService.getReaderHistory(readerId);
+    const history = await this.borrowService.repository.model.find({ readerId })
+      .populate({ path: 'bookId', select: 'title isbn coverImage author' })
+      .select('borrowDate dueDate returnDate status notes')
+      .sort({ createdAt: -1 })
+      .lean();
+      
     ApiResponse.success(res, history, "Borrow history retrieved");
   });
 
@@ -238,10 +264,19 @@ class BorrowController {
    */
   getAllBorrows = asyncHandler(async (req, res) => {
     const { page = 1, limit = 10, status, readerId, bookId, search } = req.query;
-    
+
     const filter = {};
     if (status && status !== 'all') {
-      if (status.includes(',')) {
+      if (status === 'overdue') {
+        const now = new Date();
+        filter.$or = [
+          { status: 'overdue' },
+          { 
+            status: 'borrowed',
+            dueDate: { $lt: now }
+          }
+        ];
+      } else if (status.includes(',')) {
         filter.status = { $in: status.split(',') };
       } else {
         filter.status = status;
@@ -253,7 +288,7 @@ class BorrowController {
     // Handle search by multiple fields
     if (search && search.trim() !== '') {
       const searchTerm = search.trim();
-      
+
       // Search readers by multiple fields
       const readers = await Reader.find({
         $or: [
@@ -271,10 +306,10 @@ class BorrowController {
           { isbn: { $regex: searchTerm, $options: "i" } }
         ]
       }).select("_id");
-      
+
       const readerIds = readers.map(r => r._id);
       const bookIds = books.map(b => b._id);
-      
+
       const searchConditions = [
         { readerId: { $in: readerIds } },
         { bookId: { $in: bookIds } }
@@ -287,14 +322,18 @@ class BorrowController {
 
       filter.$or = searchConditions;
     }
-    
-    const result = await this.borrowService.getAll(filter, { 
-      page: parseInt(page), 
-      limit: parseInt(limit), 
-      populate: ["bookId", "readerId"], 
+
+    const result = await this.borrowService.getAll(filter, {
+      page: parseInt(page),
+      limit: parseInt(limit),
+      populate: [
+        { path: 'bookId', select: 'title isbn coverImage author price' },
+        { path: 'readerId', select: 'fullName username idCard phone email' }
+      ],
+      select: '-__v',
       sort: { createdAt: -1 }
     });
-    
+
     ApiResponse.paginated(res, result.data, result.pagination, "Records retrieved");
   });
 
@@ -317,12 +356,29 @@ class BorrowController {
   getBorrowById = asyncHandler(async (req, res) => {
     const record = await this.borrowService.getById(req.params.id);
     if (!record) return ApiResponse.error(res, "Borrow record not found", 404);
-    
+
     if (req.user.role === "reader" && record.readerId.toString() !== req.user.id) {
-        return ApiResponse.error(res, "Access denied", 403);
+      return ApiResponse.error(res, "Access denied", 403);
     }
-    
+
     ApiResponse.success(res, record, "Borrow record retrieved");
+  });
+
+  /**
+   * @swagger
+   * /borrow/stats:
+   *   get:
+   *     summary: Get borrow statistics
+   *     tags: [Borrow]
+   *     security:
+   *       - bearerAuth: []
+   *     responses:
+   *       200:
+   *         description: Statistics retrieved
+   */
+  getStatistics = asyncHandler(async (req, res) => {
+    const stats = await this.borrowService.getStatistics();
+    ApiResponse.success(res, stats, "Borrow statistics retrieved");
   });
 }
 

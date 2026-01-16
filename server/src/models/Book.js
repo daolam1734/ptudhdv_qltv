@@ -33,10 +33,10 @@ const bookSchema = new mongoose.Schema(
       min: [1800, 'Publish year must be after 1800'],
       max: [new Date().getFullYear() + 1, 'Publish year cannot be in the future']
     },
-    category: {
-      type: String,
-      required: [true, 'Category is required'],
-      trim: true
+    categoryId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Category',
+      required: [true, 'Category is required']
     },
     lang: {
       type: String,
@@ -116,10 +116,12 @@ const bookSchema = new mongoose.Schema(
 );
 
 // Indexes
-bookSchema.index({ title: 'text', author: 'text', category: 'text', tags: 'text' });
+bookSchema.index({ title: 1 });
+bookSchema.index({ author: 1 });
 bookSchema.index({ isbn: 1 });
-bookSchema.index({ category: 1 });
+bookSchema.index({ categoryId: 1 });
 bookSchema.index({ status: 1 });
+bookSchema.index({ createdAt: -1 });
 
 // Query middleware to exclude deleted books
 bookSchema.pre(/^find/, function (next) {
@@ -130,14 +132,12 @@ bookSchema.pre(/^find/, function (next) {
 // Indexes for search
 bookSchema.index({ 
   title: 'text', 
-  author: 'text', 
-  category: 'text',
+  author: 'text',
   isbn: 'text'
 }, {
   weights: {
     title: 10,
     author: 5,
-    category: 3,
     isbn: 2
   },
   name: 'BookTextIndex'

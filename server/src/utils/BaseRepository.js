@@ -4,13 +4,21 @@ class BaseRepository {
   }
 
   async findAll(filter = {}, options = {}) {
-    const { page = 1, limit = 10, sort = { createdAt: -1 }, populate = '' } = options;
+    const { page = 1, limit = 10, sort = { createdAt: -1 }, populate = '', select = '', lean = true } = options;
     const skip = (page - 1) * limit;
 
     let query = this.model.find(filter);
 
     if (populate) {
       query = query.populate(populate);
+    }
+
+    if (select) {
+      query = query.select(select);
+    }
+
+    if (lean) {
+      query = query.lean();
     }
 
     const data = await query
@@ -34,18 +42,30 @@ class BaseRepository {
     };
   }
 
-  async findById(id, populate = '') {
+  async findById(id, populate = '', select = '', lean = true) {
     let query = this.model.findById(id);
     if (populate) {
       query = query.populate(populate);
     }
+    if (select) {
+      query = query.select(select);
+    }
+    if (lean) {
+      query = query.lean();
+    }
     return await query.exec();
   }
 
-  async findOne(filter, populate = '') {
+  async findOne(filter, populate = '', select = '', lean = true) {
     let query = this.model.findOne(filter);
     if (populate) {
       query = query.populate(populate);
+    }
+    if (select) {
+      query = query.select(select);
+    }
+    if (lean) {
+      query = query.lean();
     }
     return await query.exec();
   }

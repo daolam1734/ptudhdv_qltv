@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import readerService from "../../services/readerService";
-import { 
-  Search, 
-  UserPlus, 
+import {
+  Search,
+  UserPlus,
   Users,
   Plus,
   Filter,
@@ -136,13 +136,13 @@ const ReadersPage = () => {
     }
   };
 
-  const getStatusBadge = (status, unpaidFines = 0) => {
-    if (unpaidFines > 0) {
-        return (
-            <span className="px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-rose-500 text-white border border-rose-600 shadow-sm flex items-center gap-1 justify-center">
-                <AlertTriangle size={10} /> Vi phạm
-            </span>
-        );
+  const getStatusBadge = (status, unpaidViolations = 0) => {
+    if (unpaidViolations > 0) {
+      return (
+        <span className="px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-rose-500 text-white border border-rose-600 shadow-sm flex items-center gap-1 justify-center">
+          <AlertTriangle size={10} /> Vi phạm
+        </span>
+      );
     }
     const styles = {
       active: "bg-emerald-50 text-emerald-600 border-emerald-100",
@@ -171,7 +171,7 @@ const ReadersPage = () => {
           <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Quản lý Độc giả</h1>
           <p className="text-gray-500 font-medium mt-1">Quản lý danh sách thành viên và thẻ thư viện</p>
         </div>
-        <button 
+        <button
           onClick={() => {
             setCurrentReader(null);
             setFormData({
@@ -204,7 +204,7 @@ const ReadersPage = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="relative flex-1 max-w-lg group">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors" size={18} />
-          <input 
+          <input
             type="text"
             placeholder="Tìm kiếm theo tên, email, CCCD..."
             className="w-full pl-11 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm font-medium shadow-sm"
@@ -214,39 +214,39 @@ const ReadersPage = () => {
         </div>
         <div className="flex gap-3">
           <div className="relative group">
-              <select 
-                value={membershipFilter}
-                onChange={(e) => {
-                    setMembershipFilter(e.target.value);
-                    setPage(1);
-                }}
-                className="appearance-none pl-12 pr-10 py-3 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-600 focus:outline-none focus:border-primary transition-all cursor-pointer shadow-sm"
-              >
-                  <option value="all">Loại thành viên</option>
-                  <option value="basic">Cơ bản</option>
-                  <option value="premium">Cao cấp</option>
-                  <option value="vip">VIP</option>
-              </select>
-              <Users className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-              <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 rotate-90 pointer-events-none" size={14} />
+            <select
+              value={membershipFilter}
+              onChange={(e) => {
+                setMembershipFilter(e.target.value);
+                setPage(1);
+              }}
+              className="appearance-none pl-12 pr-10 py-3 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-600 focus:outline-none focus:border-primary transition-all cursor-pointer shadow-sm"
+            >
+              <option value="all">Loại thành viên</option>
+              <option value="basic">Cơ bản</option>
+              <option value="premium">Cao cấp</option>
+              <option value="vip">VIP</option>
+            </select>
+            <Users className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+            <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 rotate-90 pointer-events-none" size={14} />
           </div>
           <div className="relative group">
-              <select 
-                value={statusFilter}
-                onChange={(e) => {
-                    setStatusFilter(e.target.value);
-                    setPage(1);
-                }}
-                className="appearance-none pl-12 pr-10 py-3 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-600 focus:outline-none focus:border-primary transition-all cursor-pointer shadow-sm"
-              >
-                  <option value="all">Tất cả trạng thái</option>
-                  <option value="active">Hoạt động</option>
-                  <option value="suspended">Bị đình chỉ</option>
-                  <option value="expired">Hết hạn thẻ</option>
-                  <option value="inactive">Đã khóa</option>
-              </select>
-              <Filter className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-              <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 rotate-90 pointer-events-none" size={14} />
+            <select
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setPage(1);
+              }}
+              className="appearance-none pl-12 pr-10 py-3 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-600 focus:outline-none focus:border-primary transition-all cursor-pointer shadow-sm"
+            >
+              <option value="all">Tất cả trạng thái</option>
+              <option value="active">Hoạt động</option>
+              <option value="suspended">Bị đình chỉ</option>
+              <option value="expired">Hết hạn thẻ</option>
+              <option value="inactive">Đã khóa</option>
+            </select>
+            <Filter className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+            <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 rotate-90 pointer-events-none" size={14} />
           </div>
         </div>
       </div>
@@ -299,49 +299,49 @@ const ReadersPage = () => {
                       </div>
                     </td>
                     <td className="px-6 py-5 text-center">
-                        <div className="inline-flex flex-col items-center">
-                            <span className="text-sm font-black text-gray-900">{reader.currentBorrowCount || 0}</span>
-                            <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">cuốn sách</span>
+                      <div className="inline-flex flex-col items-center">
+                        <span className="text-sm font-black text-gray-900">{reader.currentBorrowCount || 0}</span>
+                        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">cuốn sách</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-5 text-center">
+                      {reader.unpaidViolations > 0 ? (
+                        <div className="inline-flex flex-col items-center group/violation relative">
+                          <span className="text-sm font-black text-rose-600 tabular-nums">
+                            {reader.unpaidViolations.toLocaleString('vi-VN')}đ
+                          </span>
+                          <span className="text-[9px] font-bold text-rose-400 uppercase tracking-tighter">chưa thanh toán</span>
                         </div>
+                      ) : (
+                        <span className="text-xs text-emerald-500 font-bold italic opacity-40">Không nợ</span>
+                      )}
                     </td>
                     <td className="px-6 py-5 text-center">
-                        {reader.unpaidFines > 0 ? (
-                            <div className="inline-flex flex-col items-center group/fine relative">
-                                <span className="text-sm font-black text-rose-600 tabular-nums">
-                                    {reader.unpaidFines.toLocaleString('vi-VN')}đ
-                                </span>
-                                <span className="text-[9px] font-bold text-rose-400 uppercase tracking-tighter">chưa thanh toán</span>
-                            </div>
-                        ) : (
-                            <span className="text-xs text-emerald-500 font-bold italic opacity-40">Không nợ</span>
-                        )}
-                    </td>
-                    <td className="px-6 py-5 text-center">
-                        {getStatusBadge(reader.status, reader.unpaidFines)}
+                      {getStatusBadge(reader.status, reader.unpaidViolations)}
                     </td>
                     <td className="px-6 py-5 text-right">
-                       <div className="flex items-center justify-end gap-2">
-                          <button 
-                            onClick={() => handleViewHistory(reader)}
-                            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
-                            title="Lịch sử mượn trả"
-                          >
-                            <ClipboardList size={16} />
-                          </button>
-                          <button 
-                            onClick={() => handleEdit(reader)}
-                            className="p-2 text-gray-400 hover:text-primary hover:bg-primary-light/10 rounded-xl transition-all"
-                            title="Chỉnh sửa"
-                          >
-                            <Edit size={16} />
-                          </button>
-                          <button 
-                            onClick={() => handleDelete(reader._id)}
-                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                       </div>
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => handleViewHistory(reader)}
+                          className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
+                          title="Lịch sử mượn trả"
+                        >
+                          <ClipboardList size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleEdit(reader)}
+                          className="p-2 text-gray-400 hover:text-primary hover:bg-primary-light/10 rounded-xl transition-all"
+                          title="Chỉnh sửa"
+                        >
+                          <Edit size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(reader._id)}
+                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -361,7 +361,7 @@ const ReadersPage = () => {
       {/* Pagination */}
       <div className="flex items-center justify-center pt-4 pb-8">
         <div className="flex gap-2 p-2 bg-white rounded-2xl shadow-sm border border-gray-100 items-center">
-          <button 
+          <button
             disabled={page === 1}
             onClick={() => setPage(p => Math.max(1, p - 1))}
             className="w-10 h-10 flex items-center justify-center rounded-xl border border-gray-100 text-gray-400 hover:bg-primary hover:text-white disabled:opacity-30 transition-all font-bold"
@@ -369,17 +369,17 @@ const ReadersPage = () => {
             <ChevronRight className="rotate-180" size={18} />
           </button>
           <div className="flex gap-1">
-             {[...Array(pagination.totalPages || 0)].map((_, i) => (
-                <button 
-                  key={i}
-                  onClick={() => setPage(i + 1)}
-                  className={`w-10 h-10 rounded-xl font-bold text-sm transition-all ${page === i + 1 ? "bg-primary text-white shadow-md shadow-indigo-100" : "bg-transparent text-gray-500 hover:bg-gray-50"}`}
-                >
-                  {i + 1}
-                </button>
-             ))}
+            {[...Array(pagination.totalPages || 0)].map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setPage(i + 1)}
+                className={`w-10 h-10 rounded-xl font-bold text-sm transition-all ${page === i + 1 ? "bg-primary text-white shadow-md shadow-indigo-100" : "bg-transparent text-gray-500 hover:bg-gray-50"}`}
+              >
+                {i + 1}
+              </button>
+            ))}
           </div>
-          <button 
+          <button
             disabled={page === pagination.totalPages}
             onClick={() => setPage(p => p + 1)}
             className="w-10 h-10 flex items-center justify-center rounded-xl border border-gray-100 text-gray-400 hover:bg-primary hover:text-white disabled:opacity-30 transition-all font-bold"
@@ -408,25 +408,25 @@ const ReadersPage = () => {
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Họ và tên</label>
-                  <input 
+                  <input
                     required
                     type="text"
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
                     placeholder="Nguyễn Văn B..."
                     value={formData.fullName}
-                    onChange={(e) => setFormData({...formData, fullName: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Tên đăng nhập</label>
-                  <input 
+                  <input
                     required
                     disabled={!!currentReader}
                     type="text"
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all disabled:opacity-50"
                     placeholder="reader123..."
                     value={formData.username}
-                    onChange={(e) => setFormData({...formData, username: e.target.value.toLowerCase()})}
+                    onChange={(e) => setFormData({ ...formData, username: e.target.value.toLowerCase() })}
                   />
                 </div>
               </div>
@@ -434,23 +434,23 @@ const ReadersPage = () => {
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Email</label>
-                  <input 
+                  <input
                     required
                     type="email"
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
                     placeholder="email@example.com"
                     value={formData.email}
-                    onChange={(e) => setFormData({...formData, email: e.target.value.toLowerCase()})}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value.toLowerCase() })}
                   />
                 </div>
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Số điện thoại</label>
-                  <input 
+                  <input
                     type="text"
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
                     placeholder="0912xxx..."
                     value={formData.phone}
-                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   />
                 </div>
               </div>
@@ -458,10 +458,10 @@ const ReadersPage = () => {
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Hạng thành viên</label>
-                  <select 
+                  <select
                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all cursor-pointer"
                     value={formData.membershipType}
-                    onChange={(e) => setFormData({...formData, membershipType: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, membershipType: e.target.value })}
                   >
                     <option value="basic">Thành viên Cơ bản</option>
                     <option value="premium">Thành viên Cao cấp</option>
@@ -469,28 +469,28 @@ const ReadersPage = () => {
                   </select>
                 </div>
                 <div className="space-y-2">
-                   <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Trạng thái tài khoản</label>
-                   <select 
-                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all cursor-pointer"
-                     value={formData.status}
-                     onChange={(e) => setFormData({...formData, status: e.target.value})}
-                   >
-                     <option value="active">Đang hoạt động</option>
-                     <option value="suspended">Bị đình chỉ (Suspended)</option>
-                     <option value="expired">Hết hạn thẻ (Expired)</option>
-                     <option value="inactive">Đã khóa tài khoản</option>
-                   </select>
+                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Trạng thái tài khoản</label>
+                  <select
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all cursor-pointer"
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                  >
+                    <option value="active">Đang hoạt động</option>
+                    <option value="suspended">Bị đình chỉ (Suspended)</option>
+                    <option value="expired">Hết hạn thẻ (Expired)</option>
+                    <option value="inactive">Đã khóa tài khoản</option>
+                  </select>
                 </div>
               </div>
 
               <div className="space-y-2">
                 <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Địa chỉ</label>
-                <input 
+                <input
                   type="text"
                   className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
                   placeholder="Số nhà, đường, quận/huyện..."
                   value={formData.address}
-                  onChange={(e) => setFormData({...formData, address: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                 />
               </div>
 
@@ -498,25 +498,25 @@ const ReadersPage = () => {
                 <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">
                   Mật khẩu {currentReader && "(Để trống nếu không đổi)"}
                 </label>
-                <input 
+                <input
                   required={!currentReader}
                   type="password"
                   className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
                   placeholder="••••••••"
                   value={formData.password}
-                  onChange={(e) => setFormData({...formData, password: e.target.value})}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 />
               </div>
 
               <div className="flex gap-4 pt-4">
-                <button 
+                <button
                   type="button"
                   onClick={() => setShowModal(false)}
                   className="flex-1 px-6 py-4 bg-gray-50 text-gray-600 rounded-2xl font-bold hover:bg-gray-100 transition-all border border-gray-100"
                 >
                   Huỷ bỏ
                 </button>
-                <button 
+                <button
                   type="submit"
                   className="flex-[2] px-6 py-4 bg-primary text-white rounded-2xl font-bold hover:bg-primary-dark transition-all shadow-lg shadow-primary/20"
                 >
@@ -546,41 +546,40 @@ const ReadersPage = () => {
             <div className="p-8 max-h-[70vh] overflow-y-auto">
               {loadingHistory ? (
                 <div className="flex justify-center py-20">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                 </div>
               ) : readerHistory.length > 0 ? (
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 gap-4">
                     {readerHistory.map((item) => (
                       <div key={item._id} className="flex items-center gap-4 p-4 rounded-2xl border border-gray-100 hover:bg-gray-50 transition-all">
-                         <img src={item.bookId?.coverImage} alt="" className="w-12 h-16 object-cover rounded shadow-sm" />
-                         <div className="flex-1 min-w-0">
-                            <p className="font-bold text-gray-900 truncate">{item.bookId?.title}</p>
-                            <div className="flex gap-4 mt-1">
-                               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Mượn: {new Date(item.borrowDate).toLocaleDateString()}</span>
-                               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Hạn: {new Date(item.dueDate).toLocaleDateString()}</span>
-                            </div>
-                         </div>
-                         <div className="text-right">
-                             <span className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${
-                                item.status === 'borrowed' ? 'bg-blue-50 text-blue-600' :
-                                item.status === 'overdue' ? 'bg-red-50 text-red-600' :
+                        <img src={item.bookId?.coverImage} alt="" className="w-12 h-16 object-cover rounded shadow-sm" />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-gray-900 truncate">{item.bookId?.title}</p>
+                          <div className="flex gap-4 mt-1">
+                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Mượn: {new Date(item.borrowDate).toLocaleDateString()}</span>
+                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Hạn: {new Date(item.dueDate).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <span className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${item.status === 'borrowed' ? 'bg-blue-50 text-blue-600' :
+                              item.status === 'overdue' ? 'bg-red-50 text-red-600' :
                                 item.status === 'returned' ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-600'
-                             }`}>
-                                {item.status}
-                             </span>
-                             {item.returnDate && (
-                                <p className="text-[9px] text-gray-400 mt-1">Trả: {new Date(item.returnDate).toLocaleDateString()}</p>
-                             )}
-                         </div>
+                            }`}>
+                            {item.status}
+                          </span>
+                          {item.returnDate && (
+                            <p className="text-[9px] text-gray-400 mt-1">Trả: {new Date(item.returnDate).toLocaleDateString()}</p>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
                 </div>
               ) : (
                 <div className="text-center py-20">
-                     <ClipboardList size={40} className="mx-auto text-gray-200 mb-2" />
-                     <p className="text-gray-400 font-medium">Chưa có lịch sử lưu thông</p>
+                  <ClipboardList size={40} className="mx-auto text-gray-200 mb-2" />
+                  <p className="text-gray-400 font-medium">Chưa có lịch sử lưu thông</p>
                 </div>
               )}
             </div>

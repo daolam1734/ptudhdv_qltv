@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import categoryService from "../../services/categoryService";
+import toast from "react-hot-toast";
 import { 
   Search, 
   Plus, 
@@ -12,7 +13,10 @@ import {
   Info,
   Layers,
   Activity,
-  AlertCircle
+  AlertCircle,
+  Book,
+  FileText,
+  BarChart3
 } from "lucide-react";
 
 const CategoriesPage = () => {
@@ -21,7 +25,6 @@ const CategoriesPage = () => {
   const [search, setSearch] = useState("");
   const [pagination, setPagination] = useState({});
   const [page, setPage] = useState(1);
-  const [message, setMessage] = useState({ type: '', text: '' });
   
   const [showModal, setShowModal] = useState(false);
   const [currentCategory, setCurrentCategory] = useState(null);
@@ -43,6 +46,7 @@ const CategoriesPage = () => {
       setPagination(res.pagination);
     } catch (err) {
       console.error("Failed to fetch categories", err);
+      toast.error("Không thể tải danh sách danh mục");
     } finally {
       setLoading(false);
     }
@@ -70,32 +74,32 @@ const CategoriesPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const loadingToast = toast.loading(currentCategory ? 'Đang cập nhật...' : 'Đang xử lý...');
     try {
       if (currentCategory) {
         await categoryService.update(currentCategory._id, formData);
-        setMessage({ type: 'success', text: 'Cập nhật danh mục thành công!' });
+        toast.success('Cập nhật danh mục thành công!', { id: loadingToast });
       } else {
         await categoryService.create(formData);
-        setMessage({ type: 'success', text: 'Thêm danh mục mới thành công!' });
+        toast.success('Thêm danh mục mới thành công!', { id: loadingToast });
       }
       setShowModal(false);
       setCurrentCategory(null);
       fetchCategories();
-      setTimeout(() => setMessage({ type: '', text: '' }), 3000);
     } catch (err) {
-      setMessage({ type: 'error', text: err.response?.data?.message || 'Có lỗi xảy ra' });
+      toast.error(err.response?.data?.message || 'Có lỗi xảy ra', { id: loadingToast });
     }
   };
 
   const handleDelete = async (id) => {
     if (window.confirm("Bạn có chắc chắn muốn xóa danh mục này?")) {
+      const loadingToast = toast.loading('Đang xóa...');
       try {
         await categoryService.remove(id);
-        setMessage({ type: 'success', text: 'Xóa danh mục thành công!' });
+        toast.success('Xóa danh mục thành công!', { id: loadingToast });
         fetchCategories();
-        setTimeout(() => setMessage({ type: '', text: '' }), 3000);
       } catch (err) {
-        setMessage({ type: 'error', text: err.response?.data?.message || 'Không thể xóa danh mục đang có sách' });
+        toast.error(err.response?.data?.message || 'Không thể xóa danh mục đang có sách', { id: loadingToast });
       }
     }
   };
@@ -105,7 +109,10 @@ const CategoriesPage = () => {
       {/* Header Area */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-8 rounded-2xl border border-gray-100 shadow-sm">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Quản lý Danh mục</h1>
+          <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center gap-3">
+            <Tags className="text-primary" size={28} />
+            Quản lý Danh mục
+          </h1>
           <p className="text-gray-500 font-medium mt-1">Quản lý các thể loại sách trong hệ thống thư viện</p>
         </div>
         <button 
@@ -116,12 +123,40 @@ const CategoriesPage = () => {
         </button>
       </div>
 
-      {message.text && (
-        <div className={`p-4 rounded-xl flex items-center gap-3 animate-in slide-in-from-top duration-500 ${message.type === 'success' ? 'bg-emerald-50 border border-emerald-100 text-emerald-800' : 'bg-rose-50 border border-rose-100 text-rose-800'}`}>
-           {message.type === 'success' ? <CheckCircle2 size={24} className="text-emerald-500" /> : <AlertCircle size={24} className="text-rose-500" />}
-           <p className="font-bold text-sm tracking-tight">{message.text}</p>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
+          <div className="w-12 h-12 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center">
+            <BarChart3 size={24} />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-gray-400 uppercase tracking-wider">Tổng danh mục</p>
+            <p className="text-2xl font-black text-gray-900">{pagination.totalItems || 0}</p>
+          </div>
         </div>
-      )}
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
+          <div className="w-12 h-12 bg-emerald-50 text-emerald-500 rounded-xl flex items-center justify-center">
+            <CheckCircle2 size={24} />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-gray-400 uppercase tracking-wider">Đang hoạt động</p>
+            <p className="text-2xl font-black text-gray-900">
+              {categories.filter(c => c.isActive).length}
+            </p>
+          </div>
+        </div>
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
+          <div className="w-12 h-12 bg-orange-50 text-orange-500 rounded-xl flex items-center justify-center">
+            <Layers size={24} />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-gray-400 uppercase tracking-wider">Số sách hiện có</p>
+            <p className="text-2xl font-black text-gray-900">
+              {categories.reduce((acc, curr) => acc + (Number(curr.bookCount) || 0), 0)}
+            </p>
+          </div>
+        </div>
+      </div>
 
       {/* Search and Filters */}
       <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex flex-col md:flex-row gap-4">
@@ -145,6 +180,7 @@ const CategoriesPage = () => {
               <tr className="bg-gray-50/50 border-b border-gray-100">
                 <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-gray-400">Tên danh mục</th>
                 <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-gray-400">Mô tả</th>
+                <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-gray-400 text-center">Số lượng sách</th>
                 <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-gray-400 text-center">Trạng thái</th>
                 <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-gray-400 text-right">Thao tác</th>
               </tr>
@@ -152,11 +188,11 @@ const CategoriesPage = () => {
             <tbody className="divide-y divide-gray-50">
               {loading ? (
                 <tr>
-                  <td colSpan="4" className="px-6 py-12 text-center text-gray-400 font-bold uppercase text-[10px] tracking-widest">Đang tải dữ liệu...</td>
+                  <td colSpan="5" className="px-6 py-12 text-center text-gray-400 font-bold uppercase text-[10px] tracking-widest">Đang tải dữ liệu...</td>
                 </tr>
               ) : categories.length === 0 ? (
                 <tr>
-                  <td colSpan="4" className="px-6 py-12 text-center text-gray-400 font-bold uppercase text-[10px] tracking-widest">Không có danh mục nào</td>
+                  <td colSpan="5" className="px-6 py-12 text-center text-gray-400 font-bold uppercase text-[10px] tracking-widest">Không có danh mục nào</td>
                 </tr>
               ) : (
                 categories.map((cat) => (
@@ -173,6 +209,14 @@ const CategoriesPage = () => {
                       <p className="text-sm text-gray-500 font-medium line-clamp-1">{cat.description || "Chưa có mô tả"}</p>
                     </td>
                     <td className="px-6 py-5 text-center">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <Book size={14} className="text-gray-400" />
+                        <span className="font-bold text-gray-700">
+                          {typeof cat.bookCount === 'number' ? cat.bookCount : (Array.isArray(cat.bookCount) ? cat.bookCount.length : 0)}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-5 text-center">
                       <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${cat.isActive ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-gray-50 text-gray-400 border-gray-100'}`}>
                         {cat.isActive ? 'Hoạt động' : 'Tạm khóa'}
                       </span>
@@ -181,13 +225,15 @@ const CategoriesPage = () => {
                       <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button 
                           onClick={() => { setCurrentCategory(cat); setShowModal(true); }}
-                          className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition-all"
+                          className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition-all shadow-sm"
                         >
                           <Edit size={16} />
                         </button>
                         <button 
                           onClick={() => handleDelete(cat._id)}
-                          className="p-2 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-600 hover:text-white transition-all"
+                          className="p-2 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-600 hover:text-white transition-all shadow-sm"
+                          disabled={cat.bookCount > 0}
+                          title={cat.bookCount > 0 ? "Không thể xóa danh mục đang có sách" : "Xóa danh mục"}
                         >
                           <Trash2 size={16} />
                         </button>

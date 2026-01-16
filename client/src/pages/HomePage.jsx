@@ -56,7 +56,7 @@ const HomePage = () => {
     if (isAuthenticated && user?.role === 'reader') {
       try {
         const response = await readerService.getFavorites();
-        setFavorites(response.data.map(f => f._id) || []);
+        setFavorites((response.data || []).map(f => f._id));
       } catch (error) {
         console.error("Error fetching favorites:", error);
       }
@@ -97,7 +97,7 @@ const HomePage = () => {
         }
 
         if (isAuthenticated && user?.role === 'reader' && favRes) {
-          setFavorites(favRes.data.map(f => f._id) || []);
+          setFavorites((favRes.data || []).map(f => f._id));
         }
 
         setNewBooks(booksRes.data?.books || booksRes.data || []);

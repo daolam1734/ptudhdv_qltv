@@ -61,7 +61,7 @@ class ReaderRepository extends BaseRepository {
     return await this.model.find({
       membershipExpiry: { $lt: new Date() },
       status: 'active'
-    });
+    }).lean();
   }
 
   async toggleFavorite(readerId, bookId) {
@@ -83,7 +83,9 @@ class ReaderRepository extends BaseRepository {
   }
 
   async getFavorites(readerId) {
-    const reader = await this.model.findById(readerId).populate('favorites');
+    const reader = await this.model.findById(readerId)
+      .populate('favorites', 'title author coverImage status available')
+      .lean();
     return reader ? reader.favorites : [];
   }
 }

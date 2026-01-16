@@ -43,12 +43,13 @@ const BooksPage = () => {
     title: "",
     author: "",
     isbn: "",
-    category: "Văn học hư cấu",
+    categoryId: "",
     publisher: "",
     publishYear: new Date().getFullYear(),
     lang: "Vietnamese",
     pages: 100,
     quantity: 1,
+    price: 50000,
     description: "",
     status: "available",
     coverImage: "",
@@ -96,12 +97,13 @@ const BooksPage = () => {
         title: currentBook.title,
         author: currentBook.author,
         isbn: currentBook.isbn,
-        category: currentBook.category || "Văn học hư cấu",
+        categoryId: currentBook.categoryId?._id || currentBook.categoryId || "",
         publisher: currentBook.publisher || "",
         publishYear: currentBook.publishYear || new Date().getFullYear(),
         lang: currentBook.lang || "Vietnamese",
         pages: currentBook.pages || 100,
         quantity: currentBook.quantity,
+        price: currentBook.price || 50000,
         description: currentBook.description || "",
         status: currentBook.status || "available",
         coverImage: currentBook.coverImage || "",
@@ -112,12 +114,13 @@ const BooksPage = () => {
         title: "",
         author: "",
         isbn: "",
-        category: "Văn học hư cấu",
+        categoryId: "",
         publisher: "",
         publishYear: new Date().getFullYear(),
         lang: "Vietnamese",
         pages: 100,
         quantity: 1,
+        price: 50000,
         description: "",
         status: "available",
         coverImage: "",
@@ -199,6 +202,7 @@ const BooksPage = () => {
         publishYear: parseInt(formData.publishYear) || new Date().getFullYear(),
         pages: parseInt(formData.pages) || 0,
         quantity: q,
+        price: parseInt(formData.price) || 0,
         available: currentBook ? undefined : q
       };
 
@@ -262,7 +266,7 @@ const BooksPage = () => {
               >
                   <option value="">Tất cả thể loại</option>
                   {dbCategories.map(cat => (
-                      <option key={cat.name} value={cat.name}>{cat.name}</option>
+                      <option key={cat._id} value={cat._id}>{cat.name}</option>
                   ))}
               </select>
               <Filter className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
@@ -327,7 +331,7 @@ const BooksPage = () => {
                         <p className="text-xs font-medium text-gray-500 italic">{book.author}</p>
                     </div>
                     <div className="flex items-center justify-between text-[10px] font-bold text-gray-400 uppercase tracking-widest pt-2 border-t border-gray-50">
-                        <span>{book.category}</span>
+                        <span className="truncate max-w-[100px]">{book.categoryId?.name || "Chưa phân loại"}</span>
                         <span>{book.isbn?.slice(-4)}...</span>
                     </div>
                 </div>
@@ -444,28 +448,16 @@ const BooksPage = () => {
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <label className="text-sm font-bold text-gray-700 ml-1">Phân loại</label>
+                                    <label className="text-sm font-bold text-gray-700 ml-1">Phân loại <span className="text-red-500">*</span></label>
                                     <select 
+                                        required
                                         className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
-                                        value={formData.category}
-                                        onChange={(e) => setFormData({...formData, category: e.target.value})}
+                                        value={formData.categoryId}
+                                        onChange={(e) => setFormData({...formData, categoryId: e.target.value})}
                                     >
-                                        {[
-                                            "Văn học hư cấu", 
-                                            "Phi hư cấu", 
-                                            "Khoa học", 
-                                            "Công nghệ", 
-                                            "Lịch sử", 
-                                            "Tiểu sử", 
-                                            "Văn học", 
-                                            "Triết học", 
-                                            "Giáo dục", 
-                                            "Thiếu nhi", 
-                                            "Truyện tranh", 
-                                            "Sách tham khảo", 
-                                            "Khác"
-                                        ].map(c => (
-                                            <option key={c} value={c}>{c}</option>
+                                        <option value="">Chọn thể loại</option>
+                                        {dbCategories.map(cat => (
+                                            <option key={cat._id} value={cat._id}>{cat.name}</option>
                                         ))}
                                     </select>
                                 </div>
@@ -530,6 +522,18 @@ const BooksPage = () => {
                                     />
                                 </div>
                                 <div className="space-y-2">
+                                    <label className="text-sm font-bold text-gray-700 ml-1">Giá sách (VNĐ)</label>
+                                    <input 
+                                        type="number"
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                                        value={formData.price}
+                                        onChange={(e) => setFormData({...formData, price: parseInt(e.target.value) || 0})}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
                                     <label className="text-sm font-bold text-gray-700 ml-1">Năm xuất bản</label>
                                     <input 
                                         type="number"
@@ -538,9 +542,6 @@ const BooksPage = () => {
                                         onChange={(e) => setFormData({...formData, publishYear: parseInt(e.target.value) || new Date().getFullYear()})}
                                     />
                                 </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
                                     <label className="text-sm font-bold text-gray-700 ml-1">Vị trí kệ sách</label>
                                     <input 
@@ -551,6 +552,9 @@ const BooksPage = () => {
                                         onChange={(e) => setFormData({...formData, location: e.target.value})}
                                     />
                                 </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-4">
                                 <div className="space-y-2">
                                     <label className="text-sm font-bold text-gray-700 ml-1">Trạng thái</label>
                                     <select 

@@ -8,7 +8,7 @@ module.exports = (controllers) => {
     borrowController,
     readerController,
     staffController,
-    fineController,
+    violationController,
     categoryController
   } = controllers;
 
@@ -19,7 +19,7 @@ module.exports = (controllers) => {
   const readerRoutes = require('./reader.routes');
   const reportRoutesFactory = require('./report.routes');
   const staffRoutes = require('./staff.routes');
-  const fineRoutes = require('./fine.routes');
+  const violationRoutes = require('./violation.routes');
   const categoryRoutes = require('./category.routes');
 
   // Register all modules
@@ -29,7 +29,7 @@ module.exports = (controllers) => {
   router.use('/readers', readerRoutes(readerController));
   router.use('/reports', reportRoutesFactory());
   router.use('/staff', staffRoutes(staffController));
-  router.use('/fines', fineRoutes(fineController));
+  router.use('/violations', violationRoutes(violationController));
   router.use('/categories', categoryRoutes(categoryController));
 
   return router;

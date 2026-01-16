@@ -25,12 +25,14 @@ import categoryService from "../../services/categoryService";
 import borrowService from "../../services/borrowService";
 import readerService from "../../services/readerService";
 import { useAuth } from "../../context/AuthContext";
+import { useBasket } from "../../context/BasketContext";
 import ConfirmModal from "../../components/common/ConfirmModal";
 import BookCard from "../../components/common/BookCard";
 import { toast } from "react-hot-toast";
 
 const ReaderBooksPage = () => {
   const { isAuthenticated, user } = useAuth();
+  const { basket, addToBasket } = useBasket();
   const navigate = useNavigate();
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
@@ -42,8 +44,6 @@ const ReaderBooksPage = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState(initialSearch);
   const [selectedCategory, setSelectedCategory] = useState(initialCategory);
-  const [msg, setMsg] = useState({ type: "", text: "" });
-  const [borrowingBook, setBorrowingBook] = useState(null);
   const [favorites, setFavorites] = useState([]);
 
   const fetchBooks = async () => {
@@ -59,7 +59,7 @@ const ReaderBooksPage = () => {
     if (isAuthenticated && user?.role === 'reader') {
       try {
         const response = await readerService.getFavorites();
-        setFavorites(response.data.map(f => f._id) || []);
+        setFavorites((response.data || []).map(f => f._id));
       } catch (error) {
         console.error("Error fetching favorites:", error);
       }
@@ -112,41 +112,13 @@ const ReaderBooksPage = () => {
   const filteredBooks = books.filter(book => {
     const matchesSearch = book.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          book.author?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = !selectedCategory || book.category === selectedCategory;
+    const matchesCategory = !selectedCategory || 
+                           (book.categoryId?._id === selectedCategory || book.categoryId === selectedCategory);
     return matchesSearch && matchesCategory;
   });
 
-  const handleBorrow = async (bookId) => {
-    try {
-      const response = await borrowService.create({ bookId });
-      if (response.success) {
-        setMsg({ type: "success", text: "Đã gửi yêu cầu mượn sách thành công! Vui lòng đến quầy để nhận sách." });
-        fetchBooks();
-      } else {
-        setMsg({ type: "error", text: response.message || "Không thể thực hiện yêu cầu mượn sách." });
-      }
-    } catch (error) {
-      setMsg({ type: "error", text: "Lỗi hệ thống khi mượn sách." });
-    }
-    setTimeout(() => setMsg({ type: "", text: "" }), 5000);
-  };
-
   return (
     <div className="space-y-6">
-      {/* Alert Message */}
-      {msg.text && (
-        <div className={`fixed top-6 right-6 z-[100] px-6 py-4 rounded-xl shadow-2xl flex items-center gap-4 animate-in slide-in-from-right duration-500 border-l-[6px] ${
-          msg.type === "success" ? "bg-white border-emerald-500 text-emerald-700" : "bg-white border-rose-500 text-rose-700"
-        }`}>
-          <div className={`p-2 rounded-full ${msg.type === "success" ? "bg-emerald-50" : "bg-rose-50"}`}>
-            {msg.type === "success" ? <CheckCircle2 size={24} /> : <AlertCircle size={24} />}
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-gray-400 mb-0.5">{msg.type === "success" ? "Thành công" : "Thông báo lỗi"}</p>
-            <p className="font-bold text-gray-900">{msg.text}</p>
-          </div>
-        </div>
-      )}
 
       {/* Header & Control Bar */}
       <div className="flex flex-col gap-8 max-w-7xl mx-auto">
@@ -174,7 +146,7 @@ const ReaderBooksPage = () => {
                     >
                         <option value="">Tất cả thể loại</option>
                         {dbCategories.map(cat => (
-                            <option key={cat.name} value={cat.name}>{cat.name} ({cat.count})</option>
+                            <option key={cat._id} value={cat._id}>{cat.name} ({cat.count})</option>
                         ))}
                     </select>
                     <Filter className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
@@ -198,22 +170,13 @@ const ReaderBooksPage = () => {
                     isAuthenticated={isAuthenticated}
                     isFavorite={favorites.includes(book._id)}
                     onToggleFavorite={(id) => handleToggleFavorite(id)}
-                    onBorrow={setBorrowingBook}
+                    onBorrow={addToBasket}
                     onViewDetails={(id) => navigate(`/books/${id}`)}
                 />
             ))}
             </div>
         )}
       </div>
-
-      <ConfirmModal 
-        isOpen={!!borrowingBook}
-        onClose={() => setBorrowingBook(null)}
-        onConfirm={() => handleBorrow(borrowingBook?._id)}
-        title="Xác nhận mượn sách"
-        message={`Bạn có chắc chắn muốn gửi yêu cầu mượn cuốn sách "${borrowingBook?.title}" không?`}
-        confirmText="Xác nhận mượn"
-      />
     </div>
   );
 };

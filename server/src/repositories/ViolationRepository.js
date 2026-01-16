@@ -1,6 +1,6 @@
 const BaseRepository = require('../utils/BaseRepository');
 
-class FineRepository extends BaseRepository {
+class ViolationRepository extends BaseRepository {
   constructor(model) {
     super(model);
   }
@@ -14,4 +14,4 @@ class FineRepository extends BaseRepository {
   }
 }
 
-module.exports = FineRepository;
+module.exports = ViolationRepository;

@@ -46,7 +46,7 @@ const DashboardPage = () => {
 
         const data = statsRes.data;
         setStats({
-          totalBooks: data.bookStats.totalBooks,
+          totalBooks: data.bookStats.total,
           totalReaders: data.readerStats.totalReaders,
           activeBorrows: data.borrowStats.activeBorrows,
           overdueBorrows: data.borrowStats.overdueBorrows,
@@ -153,36 +153,68 @@ const DashboardPage = () => {
         {/* Left Column: Management & Alerts */}
         <div className="lg:col-span-2 space-y-8">
           
-          {/* Status Alert Section */}
-          {stats.overdueBorrows > 0 && (
-            <div className="bg-gradient-to-r from-rose-500 to-red-600 rounded-3xl p-6 text-white shadow-xl shadow-red-500/20 flex flex-col sm:flex-row items-center justify-between gap-6 overflow-hidden relative">
-              <div className="absolute left-0 bottom-0 opacity-10">
-                <AlertCircle size={160} />
-              </div>
-              <div className="relative">
-                <h4 className="text-xl font-bold flex items-center gap-2">
-                  <AlertCircle size={24} /> 
-                  Cảnh báo Quá hạn
-                </h4>
-                <p className="text-white/80 text-sm mt-1 font-medium italic">
-                  Hiện đang có <span className="text-white font-black underline">{stats.overdueBorrows} cuốn sách</span> đã quá hạn trả. 
-                </p>
-                <div className="flex gap-4 mt-6">
-                  <button 
-                    onClick={() => navigate('/borrows?status=overdue')}
-                    className="px-4 py-2 bg-white text-rose-600 rounded-xl font-bold text-xs hover:bg-rose-50 transition-colors"
-                  >
-                    Xử lý vi phạm ngay
-                  </button>
+          {/* Alerts Section */}
+          <div className="space-y-4">
+            {stats.overdueBorrows > 0 && (
+              <div className="bg-gradient-to-r from-rose-500 to-red-600 rounded-3xl p-6 text-white shadow-xl shadow-red-500/20 flex flex-col sm:flex-row items-center justify-between gap-6 overflow-hidden relative">
+                <div className="absolute left-0 bottom-0 opacity-10">
+                  <AlertCircle size={120} />
+                </div>
+                <div className="relative">
+                  <h4 className="text-xl font-bold flex items-center gap-2">
+                    <AlertCircle size={24} /> 
+                    Cảnh báo Quá hạn
+                  </h4>
+                  <p className="text-white/80 text-sm mt-1 font-medium italic">
+                    Hiện đang có <span className="text-white font-black underline">{stats.overdueBorrows} cuốn sách</span> đã quá hạn trả. 
+                  </p>
+                  <div className="flex gap-4 mt-6">
+                    <button 
+                      onClick={() => navigate('/borrows?status=overdue')}
+                      className="px-4 py-2 bg-white text-rose-600 rounded-xl font-bold text-xs hover:bg-rose-50 transition-colors"
+                    >
+                      Xử lý vi phạm ngay
+                    </button>
+                  </div>
+                </div>
+                <div className="hidden sm:block">
+                  <div className="w-20 h-20 rounded-full border-4 border-white/20 flex items-center justify-center">
+                      <span className="text-2xl font-black">{stats.overdueBorrows}</span>
+                  </div>
                 </div>
               </div>
-              <div className="hidden sm:block">
-                 <div className="w-24 h-24 rounded-full border-4 border-white/20 flex items-center justify-center">
-                    <span className="text-2xl font-black">{stats.overdueBorrows}</span>
-                 </div>
+            )}
+
+            {stats.pendingRequests > 0 && (
+              <div className="bg-gradient-to-r from-amber-400 to-orange-500 rounded-3xl p-6 text-white shadow-xl shadow-orange-500/20 flex flex-col sm:flex-row items-center justify-between gap-6 overflow-hidden relative">
+                <div className="absolute left-0 bottom-0 opacity-10">
+                  <Clock size={120} />
+                </div>
+                <div className="relative">
+                  <h4 className="text-xl font-bold flex items-center gap-2">
+                    <Clock size={24} /> 
+                    Yêu cầu Chờ duyệt
+                  </h4>
+                  <p className="text-white/80 text-sm mt-1 font-medium italic">
+                    Có <span className="text-white font-black underline">{stats.pendingRequests} lượt mượn</span> đang chờ bạn phê duyệt.
+                  </p>
+                  <div className="flex gap-4 mt-6">
+                    <button 
+                      onClick={() => navigate('/borrows?status=pending')}
+                      className="px-4 py-2 bg-white text-orange-600 rounded-xl font-bold text-xs hover:bg-orange-50 transition-colors"
+                    >
+                      Phê duyệt ngay
+                    </button>
+                  </div>
+                </div>
+                <div className="hidden sm:block">
+                  <div className="w-20 h-20 rounded-full border-4 border-white/20 flex items-center justify-center">
+                      <span className="text-2xl font-black">{stats.pendingRequests}</span>
+                  </div>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Activity Timeline */}
           <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden">

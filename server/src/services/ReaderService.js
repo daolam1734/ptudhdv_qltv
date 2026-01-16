@@ -19,6 +19,11 @@ class ReaderService extends BaseService {
       ];
     }
 
+    if (!options.select) {
+      // Exclude large or sensitive fields for list view
+      options.select = '-address -favorites -lastLogin -password';
+    }
+
     return await this.repository.findAll(query, options);
   }
 
@@ -53,12 +58,12 @@ class ReaderService extends BaseService {
     return await this.repository.create(data);
   }
 
-  async updateUnpaidFines(id, amount) {
+  async updateUnpaidViolations(id, amount) {
     const reader = await this.repository.findById(id);
     if (!reader) throw new Error('Reader not found');
     
     return await this.repository.update(id, {
-      unpaidFines: (reader.unpaidFines || 0) + amount
+      unpaidViolations: (reader.unpaidViolations || 0) + amount
     });
   }
 
