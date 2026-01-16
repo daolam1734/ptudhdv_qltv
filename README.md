@@ -1,173 +1,93 @@
-# PTUDHDV - QLTV
-## Library Management System
+﻿# iLibrary - Hệ thống Quản lý Thư viện Thông minh 
 
-Full-stack application with React frontend and Node.js/Express backend connected to MongoDB Atlas.
+Hệ thống quản lý thư viện hiện đại được xây dựng với kiến trúc Full-stack (React/Node.js), hỗ trợ đầy đủ các nghiệp vụ từ tìm kiếm sách, quản lý mượn trả đến báo cáo thống kê chuyên sâu.
 
-## 🏗️ Project Structure
+##  Kiến trúc Hệ thống
 
-```
-ptudhdv_qltv/
-├── backend/          # Node.js + Express + MongoDB
-│   ├── config/       # Database configuration
-│   ├── controllers/  # Business logic
-│   ├── middleware/   # Auth & validation
-│   ├── models/       # Mongoose schemas
-│   ├── routes/       # API routes
-│   └── server.js     # Entry point
-│
-└── frontend/         # React application
-    ├── public/       # Static files
-    ├── src/
-    │   ├── components/  # React components
-    │   ├── services/    # API service layer
-    │   ├── App.js       # Main component
-    │   └── index.js     # Entry point
-    └── package.json
-```
+Dự án được tổ chức theo mô hình **MVC (Model-View-Controller)** kết hợp với **Repository Pattern** ở phía Backend để đảm bảo tính module hóa và dễ bảo trì.
 
-## 🚀 Quick Start
+- **Frontend**: React 18, Tailwind CSS, Lucide Icons, Recharts (Data Visualization).
+- **Backend**: Node.js, Express, MongoDB (Mongoose), Swagger UI (API Docs).
+- **Architecture**: Repository -> Service -> Controller -> Routes.
 
-### Prerequisites
-- Node.js v14+
-- MongoDB Atlas account
-- npm or yarn
+---
 
-### Installation
+##  Tính năng Chính
 
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/daolam1734/ptudhdv_qltv.git
-   cd ptudhdv_qltv
-   ```
+###  Dành cho Độc giả
+- **Tra cứu sách**: Tìm kiếm sách thông minh theo tên, tác giả, ISBN hoặc thể loại.
+- **Yêu cầu mượn**: Đặt chỗ (Reserve) sách trực tuyến trước khi đến thư viện.
+- **Lịch sử cá nhân**: Theo dõi danh sách sách đang mượn, lịch sử trả và các khoản phí phạt.
+- **Yêu thích**: Lưu trữ danh sách sách yêu thích để đọc sau.
 
-2. **Setup Backend:**
-   ```bash
-   cd backend
-   npm install
-   cp .env.example .env
-   # Edit .env with your MongoDB Atlas credentials
-   npm run dev
-   ```
+###  Dành cho Thủ thư (Librarian)
+- **Quy trình lưu thông tối ưu**:
+    - Phê duyệt yêu cầu mượn (Chờ lấy sách).
+    - Phát sách (Bắt đầu tính thời hạn mượn).
+    - Thu hồi & Gia hạn sách.
+- **Xử lý hư hỏng & Phí phạt**: Phân loại mức độ hư hỏng (Nhẹ/Nặng/Mất) và tự động tính phạt kèm phí quá hạn.
+- **Báo cáo vận hành**: Dashboard trực quan về xu hướng mượn sách, sách quá hạn và thống kê tài chính.
+- **Quản trị danh mục**: Quản lý linh hoạt hệ thống thể loại sách.
 
-3. **Setup Frontend (in new terminal):**
-   ```bash
-   cd frontend
-   npm install
-   npm start
-   ```
+###  Dành cho Quản trị viên (Admin)
+- **Quản lý nhân sự**: Cấp tài khoản và quản lý thông tin thủ thư.
+- **Quản lý độc giả**: Kiểm soát trạng thái thẻ (Hoạt động/Đình chỉ do quá hạn).
+- **Thống kê tổng quát**: Theo dõi toàn bộ hiệu năng và dữ liệu của thư viện.
 
-4. **Access the application:**
-   - Frontend: http://localhost:3000
-   - Backend API: http://localhost:5000
-   - Health Check: http://localhost:5000/health
+---
 
-## 🔧 Configuration
+##  Hướng dẫn Cài đặt
 
-### Backend Environment Variables (.env)
-```env
-MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/database
-PORT=5000
-NODE_ENV=development
-CLIENT_URL=http://localhost:3000
-JWT_SECRET=your_secret_key
-```
-
-### Frontend Environment Variables (.env)
-```env
-REACT_APP_API_URL=http://localhost:5000
-REACT_APP_ENV=development
-```
-
-## 📚 API Endpoints
-
-### Health & Info
-- `GET /` - Root endpoint
-- `GET /health` - Health check
-
-### Users
-- `GET /api/users` - Get all users
-- `GET /api/users/:id` - Get user by ID
-- `POST /api/users` - Create user
-- `PUT /api/users/:id` - Update user
-- `DELETE /api/users/:id` - Delete user
-
-### Items
-- `GET /api/items` - Get all items
-- `GET /api/items/:id` - Get item by ID
-- `POST /api/items` - Create item
-- `PUT /api/items/:id` - Update item
-- `DELETE /api/items/:id` - Delete item
-- `PATCH /api/items/:id/stock` - Update stock
-
-## 🛠️ Tech Stack
-
-### Backend
-- Node.js
-- Express.js
-- MongoDB Atlas
-- Mongoose
-- dotenv
-- CORS
-- Helmet
-- Express Rate Limit
-
-### Frontend
-- React 18
-- Axios
-- Modern CSS
-
-## 📝 Development
-
-### Backend Development
+### 1. Backend (Server)
 ```bash
-cd backend
-npm run dev  # Auto-restart with nodemon
+cd server
+npm install
+# Cấu hình file .env dựa trên .env.example
+npm run dev
 ```
 
-### Frontend Development
+### 2. Frontend (Client)
 ```bash
-cd frontend
-npm start  # Hot reload enabled
-```
-
-### Build for Production
-```bash
-# Frontend
-cd frontend
-npm run build
-
-# Backend (set NODE_ENV=production in .env)
-cd backend
+cd client
+npm install
 npm start
 ```
 
-## 🔒 Security Features
+---
 
-- Helmet for security headers
-- CORS configuration
-- Rate limiting (100 requests per 15 minutes)
-- Input validation
-- Environment-based configuration
-- MongoDB injection protection
+##  Cấu hình Môi trường (.env)
 
-## 👤 Author
+**Backend:**
+- `MONGODB_URI`: Đường dẫn kết nối MongoDB Atlas/Local.
+- `JWT_SECRET`: Khóa bí mật cho xác thực JWT.
+- `PORT`: Cổng chạy server (Mặc định 5000).
 
-**daolam1734**
-- GitHub: [@daolam1734](https://github.com/daolam1734)
-- Email: daolam1734@gmail.com
+**Frontend:**
+- `REACT_APP_API_URL`: URL của Backend API.
 
-## 📄 License
+---
 
-ISC
+##  API Documentation
+Hệ thống tích hợp Swagger UI để kiểm thử và tra cứu API:
+`http://localhost:5000/api-docs`
 
-## 🤝 Contributing
+---
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+##  Cấu trúc Thư mục
+```
+ptudhdv_qltv/
+ client/              # React Frontend
+    src/
+       components/  # Shared UI components
+       layouts/     # Admin/Staff/Reader Layouts
+       pages/       # Page components (Role based)
+       services/    # API calling layer
+       context/     # Auth & State management
 
-## 📞 Support
-
-For issues or questions, please open an issue on GitHub.
+ server/              # Node.js Backend
+     src/
+        models/      # Mongoose Schemas
+        repositories/# Direct DB operations
+        services/    # Business logic layer
+        controllers/ # request/response handling
+        routes/      # Endpoint definitions
