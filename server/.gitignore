@@ -3,7 +3,7 @@ node_modules/
 package-lock.json
 
 # Environment variables
-.env
+# .env (Uncommented for this specific request, but not recommended for production)
 
 # Logs
 logs
