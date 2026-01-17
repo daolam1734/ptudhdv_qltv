@@ -55,16 +55,17 @@ class BorrowService extends BaseService {
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
     
     // Đếm số lượng phiên mượn (borrowSessionId) duy nhất trong tuần qua
-    // Chỉ tính các yêu cầu thành công hoặc đang xử lý (không tính bị từ chối/hủy)
+    // Chỉ tính các yêu cầu ĐÃ PHÁT SÁCH (đang mượn, đã trả, quá hạn)
+    // Các yêu cầu "đang chờ" hoặc "đã duyệt" chưa tính vào giới hạn lượt mượn trong tuần
     const weeklySessions = await this.repository.model.distinct('borrowSessionId', {
       readerId,
       borrowDate: { $gte: oneWeekAgo },
       borrowSessionId: { $ne: null },
-      status: { $nin: ["từ chối", "đã hủy", "rejected", "cancelled"] }
+      status: { $in: ["đang mượn", "borrowed", "đã trả", "returned", "quá hạn", "overdue", "đã trả (vi phạm)"] }
     });
 
     if (weeklySessions.length >= 3) {
-      const error = new Error("Mỗi độc giả chỉ được thực hiện tối đa 03 lần mượn trong một tuần.");
+      const error = new Error("Độc giả đã đạt giới hạn 03 lần mượn (đã nhận sách) trong tuần này. Vui lòng quay lại vào tuần sau.");
       error.status = 400;
       throw error;
     }
