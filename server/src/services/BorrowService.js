@@ -12,15 +12,19 @@ class BorrowService extends BaseService {
     const { readerId, bookId, bookIds, staffId, durationDays = 14 } = data;
     
     // 0. Xử lý danh sách sách mượn (Hỗ trợ cả mượn 1 cuốn hoặc nhiều cuốn)
-    const finalBookIds = bookIds || (bookId ? [bookId] : []);
+    let finalBookIds = bookIds || (bookId ? [bookId] : []);
+    
+    // Loại bỏ các ID trùng lặp trong mảng (Một người không mượn 2 cuốn giống nhau cùng lúc)
+    finalBookIds = [...new Set(finalBookIds.map(id => id.toString()))];
+
     if (finalBookIds.length === 0) {
-      const error = new Error("Vui lòng chọn ít nhất một cuốn sách để mượn");
+      const error = new Error("Vui lòng chọn ít nhất một tài liệu để mượn");
       error.status = 400;
       throw error;
     }
 
     if (finalBookIds.length > 5) {
-      const error = new Error("Mỗi lần mượn chỉ được tối đa 5 cuốn sách");
+      const error = new Error("Một đợt mượn không được quá 5 cuốn sách. Vui lòng tách thành các đợt khác nhau.");
       error.status = 400;
       throw error;
     }
@@ -33,19 +37,19 @@ class BorrowService extends BaseService {
     }
     
     if (reader.status !== "active") {
-      const error = new Error("Tài khoản độc giả hiện không ở trạng thái hoạt động");
+      const error = new Error("Tài khoản độc giả hiện đang bị khóa hoặc không hoạt động");
       error.status = 400;
       throw error;
     }
     
-    // 1. Kiểm tra tài liệu quá hạn
+    // 1. Kiểm tra tài liệu quá hạn (Chặn tuyệt đối nếu có sách quá hạn)
     const overdueRecord = await this.repository.findOne({
       readerId,
-      status: "đang mượn",
+      status: { $in: ["đang mượn", "borrowed", "quá hạn", "overdue"] },
       dueDate: { $lt: new Date() }
     });
     if (overdueRecord) {
-      const error = new Error("Bạn không thể mượn thêm sách khi đang có tài liệu quá hạn chưa trả.");
+      const error = new Error("Bạn đang có tài liệu quá hạn chưa trả. Vui lòng hoàn trả sách trước khi thực hiện mượn mới.");
       error.status = 400;
       throw error;
     }
@@ -54,9 +58,6 @@ class BorrowService extends BaseService {
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
     
-    // Đếm số lượng phiên mượn (borrowSessionId) duy nhất trong tuần qua
-    // Chỉ tính các yêu cầu ĐÃ PHÁT SÁCH (đang mượn, đã trả, quá hạn)
-    // Các yêu cầu "đang chờ" hoặc "đã duyệt" chưa tính vào giới hạn lượt mượn trong tuần
     const weeklySessions = await this.repository.model.distinct('borrowSessionId', {
       readerId,
       borrowDate: { $gte: oneWeekAgo },
@@ -65,53 +66,64 @@ class BorrowService extends BaseService {
     });
 
     if (weeklySessions.length >= 3) {
-      const error = new Error("Độc giả đã đạt giới hạn 03 lần mượn (đã nhận sách) trong tuần này. Vui lòng quay lại vào tuần sau.");
+      const error = new Error("Bạn đã thực hiện 03 lượt lấy sách trong tuần qua. Theo quy định, vui lòng quay lại vào tuần sau.");
       error.status = 400;
       throw error;
+    }
+
+    // 3. Ràng buộc: Kiểm tra xem độc giả đã mượn những cuốn sách này chưa (Tránh mượn trùng)
+    const activeBorrows = await this.repository.model.find({
+      readerId,
+      status: { $in: ["đang chờ", "pending", "đã duyệt", "approved", "đang mượn", "borrowed"] }
+    });
+
+    const currentlyHeldBookIds = activeBorrows.reduce((acc, rec) => {
+      const items = rec.books || [];
+      items.forEach(item => acc.push(item.bookId.toString()));
+      return acc;
+    }, []);
+
+    for (const bId of finalBookIds) {
+      if (currentlyHeldBookIds.includes(bId)) {
+        const book = await this.bookService.getById(bId);
+        const error = new Error(`Bạn đang mượn hoặc có yêu cầu đang chờ cho cuốn "${book.title}". Không thể mượn trùng tài liệu.`);
+        error.status = 400;
+        throw error;
+      }
     }
     
-    // 3. Kiểm tra vi phạm nội quy (Có khoản phạt chưa thanh toán)
-    if (reader.unpaidViolations > 0) {
-      const error = new Error("Bạn có khoản phí vi phạm chưa thanh toán. Vui lòng thanh toán trước khi tiếp tục mượn sách.");
+    // 4. Kiểm tra khoản phạt chưa thanh toán
+    if (reader.unpaidViolations > 20000) { // Ví dụ: Cho phép nợ dưới 20k
+      const error = new Error(`Bạn có khoản phí phạt chưa thanh toán (${reader.unpaidViolations.toLocaleString()}đ). Vui lòng thanh toán tại quầy trước khi mượn thêm.`);
       error.status = 400;
       throw error;
     }
 
-    if (reader.suspendedUntil && reader.suspendedUntil > new Date()) {
-      const error = new Error(`Tài khoản độc giả đang bị đình chỉ đến ngày ${reader.suspendedUntil.toLocaleDateString('vi-VN')}`);
+    // 5. Số lượng mượn tối đa (Check hạn mức của độc giả)
+    const currentActiveCount = currentlyHeldBookIds.length;
+    const limit = Number(reader.borrowLimit) || 5;
+
+    if (currentActiveCount + finalBookIds.length > limit) {
+      const error = new Error(`Tổng số sách bạn đang mượn và đăng ký (${currentActiveCount + finalBookIds.length}) vượt quá hạn mức cho phép (${limit} cuốn).`);
       error.status = 400;
       throw error;
     }
 
-    // 4. Số lượng mượn tối đa (Theo hạn mức của từng độc giả)
-    const totalAfterBorrow = (reader.currentBorrowCount || 0) + finalBookIds.length;
-    if (totalAfterBorrow > (reader.borrowLimit || 5)) {
-      const error = new Error(`Bạn đã vượt quá số lượng tài liệu cho phép (${reader.borrowLimit || 5} cuốn). Hiện bạn đang mượn ${reader.currentBorrowCount} cuốn và muốn mượn thêm ${finalBookIds.length} cuốn.`);
-      error.status = 400;
-      throw error;
-    }
-
-    // 5. Kiểm tra tính khả dụng của từng cuốn sách và gom nhóm số lượng
-    const bookQuantities = {};
+    // 6. Kiểm tra tồn kho của từng cuốn sách
     for (const bId of finalBookIds) {
-      bookQuantities[bId] = (bookQuantities[bId] || 0) + 1;
-    }
-
-    // Kiểm tra tồn kho cho từng nhóm
-    for (const [bId, qty] of Object.entries(bookQuantities)) {
       const book = await this.bookService.getById(bId);
-      if (!book) {
-        throw new Error(`Không tìm thấy sách với ID: ${bId}`);
-      }
-      if (book.status !== "available" || book.available < qty) {
-        throw new Error(`Sách "${book.title}" hiện chỉ còn ${book.available} cuốn, không đủ để mượn ${qty} cuốn`);
+      if (book.status !== "available" || book.available <= 0) {
+        const error = new Error(`Tài liệu "${book.title}" hiện đã hết hoặc không sẵn sàng để lưu thông.`);
+        error.status = 400;
+        throw error;
       }
     }
 
     const isPending = !staffId;
     const borrowDate = new Date();
     const dueDate = new Date();
-    dueDate.setDate(borrowDate.getDate() + durationDays);
+    const daysToBorrowed = Number(durationDays) || 14;
+    dueDate.setDate(borrowDate.getDate() + daysToBorrowed);
     
     // Tạo ID phiên mượn duy nhất cho lần này
     const borrowSessionId = `SESS-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
