@@ -259,7 +259,7 @@ class BorrowController {
       return ApiResponse.error(res, "Access denied", 403);
     }
     const history = await this.borrowService.repository.model.find({ readerId })
-      .populate({ path: 'bookId', select: 'title isbn coverImage author price' })
+      .populate({ path: 'books.bookId', select: 'title isbn coverImage author price' })
       .populate({ path: 'readerId', select: 'fullName username idCard phone email' })
       .select('-__v')
       .sort({ createdAt: -1 })
@@ -310,7 +310,7 @@ class BorrowController {
       }
     }
     if (readerId) filter.readerId = readerId;
-    if (bookId) filter.bookId = bookId;
+    if (bookId) filter['books.bookId'] = bookId;
 
     // Handle search by multiple fields
     if (search && search.trim() !== '') {
@@ -335,11 +335,11 @@ class BorrowController {
       }).select("_id");
 
       const readerIds = readers.map(r => r._id);
-      const bookIds = books.map(b => b._id);
+      const matchedBookIds = books.map(b => b._id);
 
       const searchConditions = [
         { readerId: { $in: readerIds } },
-        { bookId: { $in: bookIds } }
+        { 'books.bookId': { $in: matchedBookIds } }
       ];
 
       // If search matches an ObjectId format exactly
@@ -354,7 +354,7 @@ class BorrowController {
       page: parseInt(page),
       limit: parseInt(limit),
       populate: [
-        { path: 'bookId', select: 'title isbn coverImage author price' },
+        { path: 'books.bookId', select: 'title isbn coverImage author price' },
         { path: 'readerId', select: 'fullName username idCard phone email' }
       ],
       select: '-__v',

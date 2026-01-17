@@ -1,11 +1,12 @@
 import React from "react";
 import { ShoppingBag, Trash2, Book as BookIcon, X } from "lucide-react";
 
-const FloatingBasket = ({ basket, onRemove, onClear, onSubmit, isOpen, setIsOpen }) => {
-  const selectedItems = basket.filter(item => item.selected);
+const FloatingBasket = ({ basket = [], onRemove, onClear, onSubmit, isOpen, setIsOpen }) => {
+  const safeBasket = Array.isArray(basket) ? basket : [];
+  const selectedItems = safeBasket.filter(item => item.selected);
   const totalCount = selectedItems.reduce((sum, item) => sum + (item.quantity || 1), 0);
 
-  if (basket.length === 0) return null;
+  if (safeBasket.length === 0) return null;
 
   return (
     <div className="fixed bottom-8 right-8 z-[100] flex flex-col items-end gap-4">
@@ -30,8 +31,8 @@ const FloatingBasket = ({ basket, onRemove, onClear, onSubmit, isOpen, setIsOpen
           </div>
 
           <div className="max-h-[350px] overflow-y-auto p-4 space-y-3 custom-scrollbar">
-            {basket.map((item) => (
-              <div key={item.book._id} className="flex items-center gap-4 bg-slate-50 p-3 rounded-[1.5rem] border border-slate-100 group">
+            {safeBasket.map((item) => (
+              <div key={item.book._id || item.book} className="flex items-center gap-4 bg-slate-50 p-3 rounded-[1.5rem] border border-slate-100 group">
                 <div className="w-14 h-20 bg-white rounded-xl shadow-sm overflow-hidden flex-shrink-0 border border-slate-200">
                   {item.book.coverImage ? (
                     <img src={item.book.coverImage} alt={item.book.title} className="w-full h-full object-cover" />
@@ -46,7 +47,7 @@ const FloatingBasket = ({ basket, onRemove, onClear, onSubmit, isOpen, setIsOpen
                   <p className="text-[10px] font-bold text-slate-400 uppercase mt-1">SL: {item.quantity || 1} cuốn</p>
                 </div>
                 <button 
-                  onClick={() => onRemove(item.book._id)}
+                  onClick={() => onRemove(item.book._id || item.book)}
                   className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
                 >
                   <Trash2 size={16} />

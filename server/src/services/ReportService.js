@@ -7,14 +7,16 @@ class ReportService {
         $facet: {
           totalBorrowedCount: [
             { $match: { status: { $in: ['borrowed', 'overdue', 'đang mượn', 'quá hạn'] } } },
+            { $unwind: '$books' },
             { $count: 'count' }
           ],
           byCategory: [
             { $match: { status: { $in: ['borrowed', 'overdue', 'đang mượn', 'quá hạn'] } } },
+            { $unwind: '$books' },
             {
               $lookup: {
                 from: 'books',
-                localField: 'bookId',
+                localField: 'books.bookId',
                 foreignField: '_id',
                 as: 'book'
               }
@@ -77,12 +79,12 @@ class ReportService {
       {
         $group: {
           _id: null,
-          totalBorrows: { $sum: 1 },
+          totalBorrows: { $sum: { $cond: [{ $isArray: "$books" }, { $size: "$books" }, 1] } },
           activeBorrows: { 
             $sum: { 
               $cond: [
                 { $in: ['$status', ['borrowed', 'overdue', 'đang mượn', 'quá hạn']] }, 
-                1, 0
+                { $cond: [{ $isArray: "$books" }, { $size: "$books" }, 1] }, 0
               ] 
             } 
           },
@@ -108,7 +110,7 @@ class ReportService {
                     }
                   ]
                 }, 
-                1, 0
+                { $cond: [{ $isArray: "$books" }, { $size: "$books" }, 1] }, 0
               ] 
             } 
           },

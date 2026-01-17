@@ -18,5 +18,10 @@ module.exports = (readerController) => {
   router.get('/me/favorites', readerController.getFavorites);
   router.post('/me/favorites/:bookId', readerController.toggleFavorite);
 
+  // Basket
+  router.get('/me/basket', readerController.getBasket);
+  router.post('/me/basket', readerController.updateBasket);
+  router.delete('/me/basket', readerController.clearBasket);
+
   return router;
 };

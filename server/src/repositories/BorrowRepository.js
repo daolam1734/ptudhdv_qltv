@@ -8,19 +8,19 @@ class BorrowRepository extends BaseRepository {
   async findActiveByReader(readerId) {
     return await this.model.find({
       readerId,
-      status: { $in: ['borrowed', 'overdue'] }
+      status: { $in: ['borrowed', 'overdue', 'đang mượn', 'quá hạn'] }
     })
-    .populate('bookId', 'title author coverImage')
+    .populate('books.bookId', 'title author coverImage')
     .lean();
   }
 
   async findOverdue() {
     return await this.model.find({
-      status: 'borrowed',
+      status: { $in: ['borrowed', 'đang mượn'] },
       dueDate: { $lt: new Date() }
     })
     .populate('readerId', 'username fullName phone')
-    .populate('bookId', 'title isbn location')
+    .populate('books.bookId', 'title isbn location')
     .lean();
   }
 

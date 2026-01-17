@@ -14,7 +14,8 @@ import {
    Star,
    Users,
    Compass,
-   ArrowRight
+   ArrowRight,
+   ShieldAlert
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
@@ -37,7 +38,7 @@ const StatCard = ({ label, value, icon, bg, text }) => (
 );
 
 const ReaderDashboardPage = () => {
-   const { user, isAuthenticated } = useAuth();
+   const { user, refreshUser, isAuthenticated } = useAuth();
    const navigate = useNavigate();
    const [stats, setStats] = useState({
       borrowing: 0,
@@ -66,6 +67,12 @@ const ReaderDashboardPage = () => {
       const fetchDashboardData = async () => {
          try {
             setLoading(true);
+            
+            // Refresh user data to get latest violation status
+            if (isAuthenticated) {
+               refreshUser();
+            }
+
             const promises = [
                bookService.getAll({ limit: 8, sort: '-createdAt' }),
                bookService.getCategories()
@@ -82,12 +89,31 @@ const ReaderDashboardPage = () => {
             if (isAuthenticated && historyRes) {
                const history = Array.isArray(historyRes.data) ? historyRes.data : (historyRes.data?.data || []);
 
-               const borrowingCount = history.filter(h => ['borrowed', 'pending', 'approved', 'đang mượn', 'đang chờ', 'đã duyệt'].includes(h.status)).length;
-               const returnedCount = history.filter(h => ['returned', 'damaged', 'damaged_heavy', 'lost', 'đã trả', 'đã trả (vi phạm)', 'hư hỏng', 'hư hỏng nặng', 'làm mất'].includes(h.status)).length;
-               const overdueCount = history.filter(h => ['overdue', 'quá hạn'].includes(h.status)).length;
+               // Calculate counts based on number of books in active requests
+               const borrowingCount = history.reduce((acc, h) => {
+                  if (['borrowed', 'pending', 'approved', 'đang mượn', 'đang chờ', 'đã duyệt'].includes(h.status)) {
+                     // If it's the new array structure, count the books, otherwise count 1 (for old data)
+                     return acc + (h.books?.length || 1);
+                  }
+                  return acc;
+               }, 0);
+
+               const returnedCount = history.reduce((acc, h) => {
+                  if (['returned', 'damaged', 'damaged_heavy', 'lost', 'đã trả', 'đã trả (vi phạm)', 'hư hỏng', 'hư hỏng nặng', 'làm mất'].includes(h.status)) {
+                     return acc + (h.books?.length || 1);
+                  }
+                  return acc;
+               }, 0);
+
+               const overdueCount = history.reduce((acc, h) => {
+                  if (['overdue', 'quá hạn'].includes(h.status)) {
+                     return acc + (h.books?.length || 1);
+                  }
+                  return acc;
+               }, 0);
 
                setStats({
-                  borrowing: borrowingCount + overdueCount,
+                  borrowing: borrowingCount,
                   returned: returnedCount,
                   overdue: overdueCount
                });
@@ -294,6 +320,16 @@ const ReaderDashboardPage = () => {
                            </div>
                         )}
 
+                        {user?.unpaidViolations > 0 && (
+                           <div className="bg-amber-500/20 border border-amber-500/30 p-4 rounded-2xl flex items-center gap-4">
+                              <ShieldAlert className="text-amber-500" size={20} />
+                              <div className="flex-1">
+                                 <p className="text-[10px] font-black text-amber-200 uppercase tracking-[0.2em] mb-0.5">Nợ phí vi phạm</p>
+                                 <p className="text-lg font-black text-white">{user.unpaidViolations.toLocaleString('vi-VN')}đ</p>
+                              </div>
+                           </div>
+                        )}
+
                         <Link to="/reader/history" className="block w-full py-4 bg-primary text-center rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-primary/20 hover:bg-white hover:text-primary transition-all">
                            Quản lý tài khoản
                         </Link>
@@ -325,17 +361,24 @@ const ReaderDashboardPage = () => {
                      <div className="space-y-4">
                         {recentBorrows.length > 0 ? (
                            recentBorrows.map(item => (
-                              <div key={item._id} className="flex items-center gap-4 p-3 bg-white border border-slate-50 rounded-2xl hover:shadow-xl hover:-translate-y-1 transition-all group cursor-pointer">
+                              <div key={item._id} className="flex items-center gap-4 p-3 bg-white border border-slate-50 rounded-2xl hover:shadow-xl hover:-translate-y-1 transition-all group cursor-pointer" onClick={() => navigate('/reader/history')}>
                                  <div className="w-12 h-16 bg-slate-100 rounded-xl overflow-hidden shrink-0">
-                                    {item.bookId?.coverImage ? (
-                                       <img src={item.bookId.coverImage} className="w-full h-full object-cover" alt="" />
+                                    {item.books?.[0]?.bookId?.coverImage ? (
+                                       <img src={item.books[0].bookId.coverImage} className="w-full h-full object-cover" alt="" />
                                     ) : (
                                        <div className="w-full h-full flex items-center justify-center text-slate-300"><Book size={16} /></div>
                                     )}
                                  </div>
-                                 <div className="min-w-0">
-                                    <h5 className="text-[11px] font-black text-slate-900 truncate group-hover:text-primary transition-colors">{item.bookId?.title}</h5>
-                                    <p className="text-[9px] text-slate-400 font-bold uppercase mt-1 tracking-widest">{(['borrowed', 'đang mượn', 'overdue', 'quá hạn'].includes(item.status)) ? 'Hạn trả ' : 'Ngày cập nhật '}{new Date(item.status === 'returned' || item.status === 'đã trả' ? item.returnDate || item.updatedAt : item.dueDate).toLocaleDateString("vi-VN")}</p>
+                                 <div className="min-w-0 flex-1">
+                                    <h5 className="text-[11px] font-black text-slate-900 truncate group-hover:text-primary transition-colors">
+                                       {item.books?.length > 1 
+                                          ? `${item.books[0]?.bookId?.title || 'Tài liệu'} (+${item.books.length - 1})` 
+                                          : (item.books?.[0]?.bookId?.title || 'Tài liệu')}
+                                    </h5>
+                                    <p className="text-[9px] text-slate-400 font-bold uppercase mt-1 tracking-widest">
+                                       {(['borrowed', 'đang mượn', 'overdue', 'quá hạn'].includes(item.status)) ? 'Hạn trả ' : 'Ngày cập nhật '}
+                                       {new Date(item.status === 'returned' || item.status === 'đã trả' ? item.returnDate || item.updatedAt : item.dueDate).toLocaleDateString("vi-VN")}
+                                    </p>
                                  </div>
                               </div>
                            ))

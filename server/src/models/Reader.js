@@ -100,6 +100,20 @@ const readerSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Book'
     }],
+    basket: [{
+      book: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Book'
+      },
+      quantity: {
+        type: Number,
+        default: 1
+      },
+      selected: {
+        type: Boolean,
+        default: true
+      }
+    }],
     unpaidViolations: {
       type: Number,
       default: 0

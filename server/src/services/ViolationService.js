@@ -38,6 +38,23 @@ class ViolationService extends BaseService {
       staffId
     });
 
+    // Sync with Borrow record if exists
+    const borrowId = violation.borrowId?._id || violation.borrowId;
+    if (borrowId) {
+      try {
+        const mongoose = require('mongoose');
+        const BorrowModel = mongoose.models.Borrow || require('../models/Borrow');
+        await BorrowModel.findByIdAndUpdate(borrowId, {
+          $set: {
+            'violation.isPaid': true,
+            'violation.paidAt': new Date()
+          }
+        });
+      } catch (syncError) {
+        console.error('Failed to sync payment to Borrow record:', syncError);
+      }
+    }
+
     // Reduce reader's total unpaid violations
     await this.readerService.updateUnpaidViolations(violation.readerId, -violation.amount);
 
@@ -61,13 +78,47 @@ class ViolationService extends BaseService {
           status: 'đã thanh toán',
           paidAt: new Date()
         });
+
+        // Sync with Borrow record if exists
+        const borrowId = violation.borrowId?._id || violation.borrowId;
+        if (borrowId) {
+          try {
+            const mongoose = require('mongoose');
+            const BorrowModel = mongoose.models.Borrow || require('../models/Borrow');
+            await BorrowModel.findByIdAndUpdate(borrowId, {
+              $set: {
+                'violation.isPaid': true,
+                'violation.paidAt': new Date()
+              }
+            });
+          } catch (syncError) {
+            console.error('Failed to sync batch payment to Borrow record:', syncError);
+          }
+        }
       } else {
         // Partial pay
         const newAmount = violation.amount - remainingToPay;
+        const currentToPay = remainingToPay;
         await this.repository.update(violation._id, { 
           amount: newAmount,
-          description: (violation.description || "") + ` (Đã thanh toán một phần: ${remainingToPay}đ)`
+          description: (violation.description || "") + ` (Đã thanh toán một phần: ${currentToPay}đ)`
         });
+
+        // Sync partial payment to Borrow record if exists
+        const borrowId = violation.borrowId?._id || violation.borrowId;
+        if (borrowId) {
+          try {
+            const mongoose = require('mongoose');
+            const BorrowModel = mongoose.models.Borrow || require('../models/Borrow');
+            await BorrowModel.findByIdAndUpdate(borrowId, {
+              $set: {
+                'violation.amount': newAmount
+              }
+            });
+          } catch (syncError) {
+            console.error('Failed to sync partial payment to Borrow record:', syncError);
+          }
+        }
         remainingToPay = 0;
       }
     }

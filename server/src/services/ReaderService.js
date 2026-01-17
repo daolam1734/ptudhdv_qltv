@@ -77,6 +77,18 @@ class ReaderService extends BaseService {
   async getFavorites(readerId) {
     return await this.repository.getFavorites(readerId);
   }
+
+  async getBasket(readerId) {
+    return await this.repository.getBasket(readerId);
+  }
+
+  async updateBasket(readerId, basketData) {
+    return await this.repository.updateBasket(readerId, basketData);
+  }
+
+  async clearBasket(readerId) {
+    return await this.repository.clearBasket(readerId);
+  }
 }
 
 module.exports = ReaderService;

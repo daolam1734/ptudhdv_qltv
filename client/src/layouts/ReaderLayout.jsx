@@ -11,9 +11,11 @@ import { toast } from "react-hot-toast";
 
 const ReaderLayout = ({ children }) => {
   const { user, isAuthenticated } = useAuth();
-  const { basket, setBasket, isBasketOpen, setIsBasketOpen, removeFromBasket, clearBasket } = useBasket();
+  const { basket = [], setBasket, isBasketOpen, setIsBasketOpen, removeFromBasket, clearBasket } = useBasket();
   const location = useLocation();
   const navigate = useNavigate();
+
+  const safeBasket = Array.isArray(basket) ? basket : [];
 
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
@@ -23,12 +25,12 @@ const ReaderLayout = ({ children }) => {
   }, [location.search, location.pathname]);
 
   const handleMultiBorrow = async () => {
-    if (basket.length === 0) return;
+    if (safeBasket.length === 0) return;
 
     const bookIds = [];
-    basket.forEach(item => {
+    safeBasket.forEach(item => {
       for (let i = 0; i < item.quantity; i++) {
-        bookIds.push(item.book._id);
+        bookIds.push(item.book._id || item.book);
       }
     });
 
@@ -36,8 +38,8 @@ const ReaderLayout = ({ children }) => {
       const res = await borrowService.create({ bookIds });
 
       if (res.success) {
-        toast.success(`Đã gửi yêu cầu mượn ${bookIds.length} cuốn sách thành công!`, {
-          duration: 5000,
+        toast.success("Hệ thống đã ghi nhận yêu cầu mượn sách của bạn. Sau khi yêu cầu được duyệt, bạn sẽ nhận được thông báo để đến quầy nhận sách", {
+          duration: 6000,
           icon: '📚'
         });
         clearBasket();
@@ -93,7 +95,7 @@ const ReaderLayout = ({ children }) => {
 
       {isAuthenticated && user?.role?.toLowerCase() === 'reader' && (
         <FloatingBasket
-          basket={basket}
+          basket={safeBasket}
           onRemove={removeFromBasket}
           onClear={clearBasket}
           onSubmit={handleMultiBorrow}

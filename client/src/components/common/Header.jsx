@@ -7,14 +7,14 @@ import { Library, LogIn, LogOut, Menu, X, Bell, LayoutDashboard, Book, History, 
 
 const Header = () => {
   const { user, isAuthenticated, logout } = useAuth();
-  const { basket } = useBasket();
+  const { basket = [] } = useBasket();
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
 
-  const selectedItems = basket.filter(item => item.selected);
+  const selectedItems = Array.isArray(basket) ? basket.filter(item => item.selected) : [];
   const basketCount = selectedItems.reduce((sum, item) => sum + item.quantity, 0);
 
   useEffect(() => {

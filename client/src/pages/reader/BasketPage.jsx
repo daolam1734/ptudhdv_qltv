@@ -18,11 +18,12 @@ import {
 import { toast } from 'react-hot-toast';
 
 const BasketPage = () => {
-  const { basket, removeFromBasket, clearBasket, updateQuantity, toggleSelection } = useBasket();
+  const { basket = [], removeFromBasket, clearBasket, updateQuantity, toggleSelection } = useBasket();
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
 
-  const selectedItems = basket.filter(item => item.selected);
+  const safeBasket = Array.isArray(basket) ? basket : [];
+  const selectedItems = safeBasket.filter(item => item.selected);
   const totalCount = selectedItems.reduce((sum, item) => sum + item.quantity, 0);
 
   const handleCheckout = async () => {
@@ -34,7 +35,7 @@ const BasketPage = () => {
     const bookIds = [];
     selectedItems.forEach(item => {
         for (let i = 0; i < item.quantity; i++) {
-            bookIds.push(item.book._id);
+            bookIds.push(item.book._id || item.book);
         }
     });
 
@@ -42,8 +43,8 @@ const BasketPage = () => {
       const res = await borrowService.create({ bookIds });
       
       if (res.success) {
-        toast.success(`Đã gửi yêu cầu mượn ${bookIds.length} cuốn sách thành công!`, {
-          duration: 5000,
+        toast.success("Hệ thống đã ghi nhận yêu cầu mượn sách của bạn. Sau khi yêu cầu được duyệt, bạn sẽ nhận được thông báo để đến quầy nhận sách", {
+          duration: 6000,
           icon: '📚'
         });
         clearBasket();
@@ -54,7 +55,7 @@ const BasketPage = () => {
     }
   };
 
-  if (basket.length === 0) {
+  if (safeBasket.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 space-y-6">
         <div className="w-24 h-24 bg-slate-50 rounded-[2rem] flex items-center justify-center text-slate-200 border border-slate-100 shadow-inner">
@@ -101,13 +102,13 @@ const BasketPage = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* List Section */}
         <div className="lg:col-span-2 space-y-4">
-          {basket.map((item) => (
-            <div key={item.book._id} className={`bg-white rounded-[2rem] border p-6 flex flex-col sm:flex-row items-center gap-6 group transition-all duration-500 ${item.selected ? 'border-primary shadow-2xl shadow-primary/5' : 'border-slate-100 opacity-70'}`}>
+          {safeBasket.map((item) => (
+            <div key={item.book._id || item.book} className={`bg-white rounded-[2rem] border p-6 flex flex-col sm:flex-row items-center gap-6 group transition-all duration-500 ${item.selected ? 'border-primary shadow-2xl shadow-primary/5' : 'border-slate-100 opacity-70'}`}>
               <div className="flex items-center">
                  <input 
                     type="checkbox" 
                     checked={item.selected} 
-                    onChange={() => toggleSelection(item.book._id)}
+                    onChange={() => toggleSelection(item.book._id || item.book)}
                     className="w-6 h-6 rounded-lg border-2 border-slate-200 text-primary focus:ring-primary cursor-pointer transition-all"
                  />
               </div>
@@ -137,21 +138,21 @@ const BasketPage = () => {
               <div className="flex flex-col items-center gap-4 min-w-[120px]">
                 <div className="flex items-center bg-slate-100 rounded-2xl p-1 border border-slate-200 shadow-inner">
                   <button 
-                    onClick={() => updateQuantity(item.book._id, -1)}
+                    onClick={() => updateQuantity(item.book._id || item.book, -1)}
                     className="p-2 hover:bg-white rounded-xl text-slate-500 transition-all shadow-none hover:shadow-sm"
                   >
                     <Minus size={16} />
                   </button>
                   <span className="w-10 text-center font-black text-slate-900">{item.quantity}</span>
                   <button 
-                    onClick={() => updateQuantity(item.book._id, 1)}
+                    onClick={() => updateQuantity(item.book._id || item.book, 1)}
                     className="p-2 hover:bg-white rounded-xl text-slate-500 transition-all shadow-none hover:shadow-sm"
                   >
                     <Plus size={16} />
                   </button>
                 </div>
                 <button 
-                  onClick={() => removeFromBasket(item.book._id)}
+                  onClick={() => removeFromBasket(item.book._id || item.book)}
                   className="text-[10px] font-black text-rose-400 hover:text-rose-600 uppercase tracking-widest flex items-center gap-1.5 transition-colors"
                 >
                   <Trash2 size={12} />

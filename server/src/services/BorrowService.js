@@ -50,19 +50,21 @@ class BorrowService extends BaseService {
       throw error;
     }
 
-    // 2. Kiểm tra số lần mượn trong tuần (Tối đa 2 lần/tuần)
+    // 2. Kiểm tra số lần mượn trong tuần (Tối đa 03 lần/tuần)
     const oneWeekAgo = new Date();
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
     
     // Đếm số lượng phiên mượn (borrowSessionId) duy nhất trong tuần qua
+    // Chỉ tính các yêu cầu thành công hoặc đang xử lý (không tính bị từ chối/hủy)
     const weeklySessions = await this.repository.model.distinct('borrowSessionId', {
       readerId,
       borrowDate: { $gte: oneWeekAgo },
-      borrowSessionId: { $ne: null }
+      borrowSessionId: { $ne: null },
+      status: { $nin: ["từ chối", "đã hủy", "rejected", "cancelled"] }
     });
 
-    if (weeklySessions.length >= 2) {
-      const error = new Error("Mỗi độc giả chỉ được thực hiện tối đa 02 lần mượn trong một tuần.");
+    if (weeklySessions.length >= 3) {
+      const error = new Error("Mỗi độc giả chỉ được thực hiện tối đa 03 lần mượn trong một tuần.");
       error.status = 400;
       throw error;
     }
@@ -113,21 +115,27 @@ class BorrowService extends BaseService {
     // Tạo ID phiên mượn duy nhất cho lần này
     const borrowSessionId = `SESS-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-    const results = [];
+    // Chuẩn bị danh sách sách cho bản ghi gộp
+    const books = finalBookIds.map(bId => ({
+      bookId: bId,
+      status: isPending ? "đang chờ" : "đang mượn",
+      renewalCount: 0,
+      violation: { amount: 0 }
+    }));
 
-    // Tạo các bản ghi mượn và cập nhật kho theo từng quyển
+    // Tạo MỘT bản ghi mượn duy nhất cho toàn bộ danh sách sách
+    const borrowRecord = await this.repository.create({
+      readerId,
+      books, // Lưu toàn bộ mảng sách vào một yêu cầu
+      staffId: staffId || null,
+      borrowDate,
+      dueDate,
+      borrowSessionId,
+      status: isPending ? "đang chờ" : "đang mượn"
+    });
+
+    // Cập nhật kho cho từng quyển sách
     for (const bId of finalBookIds) {
-      const borrowRecord = await this.repository.create({
-        readerId,
-        bookId: bId,
-        staffId: staffId || null,
-        borrowDate,
-        dueDate,
-        borrowSessionId,
-        status: isPending ? "đang chờ" : "đang mượn"
-      });
-
-      // Cập nhật số lượng trong kho bằng $inc để tránh lỗi đua dữ liệu
       await this.bookService.repository.model.findByIdAndUpdate(bId, {
         $inc: {
           available: -1,
@@ -135,8 +143,6 @@ class BorrowService extends BaseService {
           totalBorrowed: 1
         }
       });
-
-      results.push(borrowRecord);
     }
 
     // Cập nhật số lượng mượn của độc giả
@@ -147,29 +153,48 @@ class BorrowService extends BaseService {
       }
     });
 
-    return results.length === 1 ? results[0] : results;
+    return borrowRecord;
   }
 
   async approveBorrow(borrowId, staffId) {
     const record = await this.repository.findById(borrowId);
-    if (!record) throw new Error("Borrow record not found");
-    if (record.status !== "đang chờ") {
-      throw new Error("Only pending requests can be approved");
+    if (!record) throw new Error("Không tìm thấy bản ghi mượn sách.");
+    
+    // Nếu đã duyệt rồi thì trả về luôn để tránh lỗi double click
+    if (["đã duyệt", "approved"].includes(record.status)) {
+      return record;
     }
+
+    if (!["đang chờ", "pending"].includes(record.status)) {
+      throw new Error(`Yêu cầu này không thể phê duyệt (Trạng thái hiện tại: ${record.status}). Chỉ có thể duyệt các yêu cầu đang ở trạng thái Chờ duyệt.`);
+    }
+
+    // Cập nhật trạng thái cho cả yêu cầu và từng cuốn sách bên trong
+    const bookItems = record.books || (record.bookId ? [{ bookId: record.bookId }] : []);
+    const updatedBooks = bookItems.map(item => ({
+      ...(item.toObject ? item.toObject() : item),
+      status: "đã duyệt"
+    }));
 
     return await this.repository.update(borrowId, {
       status: "đã duyệt",
+      books: updatedBooks,
       staffId
     });
   }
 
   async issueBook(borrowId, staffId) {
     const record = await this.repository.findById(borrowId);
-    if (!record) throw new Error("Borrow record not found");
+    if (!record) throw new Error("Không tìm thấy bản ghi mượn sách.");
     
+    // Nếu đã phát sách rồi
+    if (["đang mượn", "borrowed"].includes(record.status)) {
+      return record;
+    }
+
     // Can issue if approved or directly from pending (for walk-in pickup)
-    if (record.status !== "đã duyệt" && record.status !== "đang chờ") {
-      throw new Error("Sách chỉ có thể được phát khi đang ở trạng thái Chờ duyệt hoặc Đã duyệt");
+    if (!["đã duyệt", "approved", "đang chờ", "pending"].includes(record.status)) {
+      throw new Error(`Không thể phát sách (Trạng thái hiện tại: ${record.status}). Sách chỉ có thể được phát khi đang ở trạng thái Chờ duyệt hoặc Đã duyệt.`);
     }
 
     const borrowDate = new Date();
@@ -177,8 +202,16 @@ class BorrowService extends BaseService {
     // Default 14 days from pickup
     dueDate.setDate(borrowDate.getDate() + 14);
 
+    // Cập nhật trạng thái cho từng cuốn sách bên trong
+    const bookItems = record.books || (record.bookId ? [{ bookId: record.bookId }] : []);
+    const updatedBooks = bookItems.map(item => ({
+      ...(item.toObject ? item.toObject() : item),
+      status: "đang mượn"
+    }));
+
     return await this.repository.update(borrowId, {
       status: "đang mượn",
+      books: updatedBooks,
       staffId,
       borrowDate,
       dueDate
@@ -187,25 +220,46 @@ class BorrowService extends BaseService {
 
   async rejectBorrow(borrowId, staffId, notes = "") {
     const record = await this.repository.findById(borrowId);
-    if (!record) throw new Error("Borrow record not found");
-    if (record.status !== "đang chờ" && record.status !== "đã duyệt") {
-      throw new Error("Chỉ có thể từ chối/hủy yêu cầu khi đang ở trạng thái Chờ duyệt hoặc Đã duyệt");
+    if (!record) throw new Error("Không tìm thấy bản ghi mượn sách.");
+    
+    // Nếu đã từ chối hoặc hủy rồi thì không trả về lỗi 500 mà trả về kết quả hiện tại
+    if (["từ chối", "rejected", "đã hủy", "cancelled"].includes(record.status)) {
+      return record;
     }
 
-    // Return book to stock
-    const book = await this.bookService.getById(record.bookId);
-    if (book) {
-      await this.bookService.update(record.bookId, {
-        available: book.available + 1,
-        borrowed: Math.max(0, (book.borrowed || 1) - 1)
-      });
+    if (!["đang chờ", "pending", "đã duyệt", "approved"].includes(record.status)) {
+      throw new Error(`Không thể từ chối yêu cầu này. Trạng thái hiện tại: ${record.status}. Chỉ có thể từ chối khi đang ở trạng thái Chờ duyệt hoặc Đã duyệt.`);
     }
 
-    // Decrement reader borrow count
-    await this.readerService.repository.decrementBorrowCount(record.readerId);
+    // Hoàn trả số lượng vào kho cho TẤT CẢ các sách trong yêu cầu
+    const bookItems = record.books || (record.bookId ? [{ bookId: record.bookId }] : []);
+    for (const item of bookItems) {
+      const book = await this.bookService.getById(item.bookId);
+      if (book) {
+        await this.bookService.update(item.bookId, {
+          available: book.available + 1,
+          borrowed: Math.max(0, (book.borrowed || 1) - 1)
+        });
+      }
+    }
+
+    // Giảm số lượng mượn hiện tại của độc giả
+    const bookCount = bookItems.length;
+    await this.readerService.repository.model.findByIdAndUpdate(record.readerId, {
+      $inc: { 
+        currentBorrowCount: -bookCount,
+        totalBorrowed: -bookCount 
+      }
+    });
+
+    const updatedBooks = bookItems.map(item => ({
+      ...(item.toObject ? item.toObject() : item),
+      status: "từ chối"
+    }));
 
     return await this.repository.update(borrowId, {
       status: "từ chối",
+      books: updatedBooks,
       staffId,
       notes: notes || "Yêu cầu mượn sách bị từ chối"
     });
@@ -215,9 +269,14 @@ class BorrowService extends BaseService {
     const record = await this.repository.findById(borrowId);
     if (!record) throw new Error("Không tìm thấy thông tin lượt mượn");
 
+    // Nếu đã hủy hoặc từ chối rồi thì không báo lỗi
+    if (["đã hủy", "cancelled", "từ chối", "rejected"].includes(record.status)) {
+      return record;
+    }
+
     // Chỉ có thể hủy khi đang chờ duyệt hoặc đã duyệt (nhưng chưa phát sách)
-    if (record.status !== "đang chờ" && record.status !== "đã duyệt") {
-      throw new Error("Chỉ có thể hủy yêu cầu mượn khi đang trong trạng thái chờ duyệt hoặc đã duyệt");
+    if (!["đang chờ", "pending", "đã duyệt", "approved"].includes(record.status)) {
+      throw new Error(`Chỉ có thể hủy yêu cầu mượn khi đang trong trạng thái chờ duyệt hoặc đã duyệt. Trạng thái hiện tại: ${record.status}`);
     }
 
     // Kiểm tra quyền sở hữu (Bypass nếu là thủ thư/admin)
@@ -225,68 +284,90 @@ class BorrowService extends BaseService {
       throw new Error("Bạn không có quyền hủy yêu cầu mượn này");
     }
 
-    // 1. Phục hồi số lượng trong kho
-    const book = await this.bookService.getById(record.bookId);
-    if (book) {
-      await this.bookService.repository.model.findByIdAndUpdate(record.bookId, {
-        $inc: {
-          available: 1,
-          borrowed: -1,
-          totalBorrowed: -1
-        }
-      });
+    // 1. Phục hồi số lượng trong kho cho TẤT CẢ các sách
+    const bookItems = record.books || (record.bookId ? [{ bookId: record.bookId }] : []);
+    for (const item of bookItems) {
+      const book = await this.bookService.getById(item.bookId);
+      if (book) {
+        await this.bookService.repository.model.findByIdAndUpdate(item.bookId, {
+          $inc: {
+            available: 1,
+            borrowed: -1,
+            totalBorrowed: -1
+          }
+        });
+      }
     }
 
     // 2. Giảm số lượng đang mượn của độc giả
+    const bookCount = bookItems.length;
     await this.readerService.repository.model.findByIdAndUpdate(record.readerId, {
       $inc: { 
-        currentBorrowCount: -1,
-        totalBorrowed: -1 
+        currentBorrowCount: -bookCount,
+        totalBorrowed: -bookCount 
       }
     });
 
+    const updatedBooks = bookItems.map(item => ({
+      ...(item.toObject ? item.toObject() : item),
+      status: "đã hủy"
+    }));
+
     return await this.repository.update(borrowId, {
       status: "đã hủy",
+      books: updatedBooks,
       notes: isStaff ? `Thủ thư đã hủy yêu cầu (ID thực hiện: ${userId})` : "Độc giả đã hủy yêu cầu mượn"
     });
   }
 
   async renewBorrow(borrowId) {
-    const record = await this.repository.findById(borrowId);
-    if (!record) throw new Error("Borrow record not found");
+    const record = await this.repository.findById(borrowId, 'books.bookId');
+    if (!record) throw new Error("Không tìm thấy bản ghi mượn sách");
 
     // Rule 1: Không được gia hạn sách đã quá hạn
     const now = new Date();
-    if (record.status === "quá hạn" || now > new Date(record.dueDate)) {
+    if (["quá hạn", "overdue"].includes(record.status) || now > new Date(record.dueDate)) {
       throw new Error("Không thể gia hạn vì sách đã quá hạn. Vui lòng trả sách và xử lý phí vi phạm (nếu có).");
     }
 
-    if (record.status !== "đang mượn") {
+    if (!["đang mượn", "borrowed"].includes(record.status)) {
       throw new Error("Chỉ có thể gia hạn sách đang trong trạng thái mượn.");
     }
 
-    // Rule 2: Mỗi cuốn sách được gia hạn tối đa 2 lần
+    // Rule 2: Mỗi cuốn sách được gia hạn tối đa 2 lần (Áp dụng cho toàn bộ yêu cầu)
     if (record.renewalCount >= 2) {
-      throw new Error(`Sách đã đạt giới hạn gia hạn tối đa (2 lần).`);
+      throw new Error(`Yêu cầu này đã đạt giới hạn gia hạn tối đa (2 lần).`);
     }
 
-    // Rule 3: Có người khác đặt giữ sách (yêu cầu pending)
-    const pendingOthers = await this.repository.findAll({
-      bookId: record.bookId,
-      status: "đang chờ"
-    });
+    // Rule 3: Có người khác đặt giữ sách (yêu cầu pending) cho bất kỳ sách nào trong list
+    const bookItems = record.books || (record.bookId ? [{ bookId: record.bookId }] : []);
+    for (const item of bookItems) {
+        const bookId = item.bookId._id || item.bookId;
+        const pendingOthers = await this.repository.findAll({
+          'books.bookId': bookId,
+          _id: { $ne: record._id },
+          status: { $in: ["đang chờ", "pending"] }
+        });
 
-    if (pendingOthers.data && pendingOthers.data.length > 0) {
-      throw new Error("Không thể gia hạn vì đang có độc giả khác đặt giữ cuốn sách này.");
+        if (pendingOthers.data && pendingOthers.data.length > 0) {
+          throw new Error(`Không thể gia hạn vì đang có độc giả khác đặt giữ cuốn sách "${item.bookId?.title || 'trong danh sách'}".`);
+        }
     }
 
     // Rule 4: Thời gian gia hạn: gia hạn thêm 14 ngày
     const newDueDate = new Date(record.dueDate);
     newDueDate.setDate(newDueDate.getDate() + 14);
 
+    // Cập nhật gia hạn cho cả record và các items bên trong
+    const updatedBooks = bookItems.map(item => ({
+       ...(item.toObject ? item.toObject() : item),
+       renewalCount: (item.renewalCount || 0) + 1
+    }));
+
     return await this.repository.update(borrowId, {
       dueDate: newDueDate,
-      renewalCount: (record.renewalCount || 0) + 1
+      renewalCount: (record.renewalCount || 0) + 1,
+      books: updatedBooks
     });
   }
 
@@ -352,8 +433,18 @@ class BorrowService extends BaseService {
     }
 
     // 4. Update Borrow record
+    const finalStatus = (status === 'vi phạm' || finalAmount > 0) ? "đã trả (vi phạm)" : "đã trả";
+    
+    // Cập nhật trạng thái cho từng cuốn sách
+    const updatedBooks = record.books.map(item => ({
+      ...item.toObject(),
+      status: finalStatus,
+      returnDate
+    }));
+
     const updateData = {
-      status: (status === 'vi phạm' || finalAmount > 0) ? "đã trả (vi phạm)" : "đã trả",
+      status: finalStatus,
+      books: updatedBooks,
       returnDate,
       notes,
       staffId
@@ -369,16 +460,22 @@ class BorrowService extends BaseService {
 
     result.record = await this.repository.update(borrowId, updateData);
 
-    // 5. Update book quantity (Simplified: always returned to stock unless manually disposed by staff in BooksPage)
-    const book = await this.bookService.getById(record.bookId);
-    if (book) {
-      await this.bookService.update(record.bookId, {
-        available: (book.available || 0) + 1,
-        borrowed: Math.max(0, (book.borrowed || 0) - 1)
-      });
+    // 5. Update book inventory and quantities for ALL books
+    const bookItems = record.books || (record.bookId ? [{ bookId: record.bookId }] : []);
+    for (const item of bookItems) {
+        const book = await this.bookService.getById(item.bookId);
+        if (book) {
+          await this.bookService.update(item.bookId, {
+            available: (book.available || 0) + 1,
+            borrowed: Math.max(0, (book.borrowed || 0) - 1)
+          });
+        }
     }
 
-    await this.readerService.repository.decrementBorrowCount(record.readerId);
+    // Giảm số lượng mượn hiện tại của độc giả
+    await this.readerService.repository.model.findByIdAndUpdate(record.readerId, {
+        $inc: { currentBorrowCount: -bookItems.length }
+    });
 
     return result;
   }
@@ -390,7 +487,7 @@ class BorrowService extends BaseService {
   async getReaderHistory(readerId) {
     const result = await this.repository.findAll(
       { readerId }, 
-      { sort: { createdAt: -1 }, populate: ["bookId"], limit: 1000 }
+      { sort: { createdAt: -1 }, populate: ["books.bookId"], limit: 1000 }
     );
     return result.data;
   }

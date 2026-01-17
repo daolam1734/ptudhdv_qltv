@@ -12,5 +12,24 @@ export const search = (q) => axiosInstance.get('readers/search', { params: { q }
 export const toggleFavorite = (bookId) => axiosInstance.post(`readers/me/favorites/${bookId}`);
 export const getFavorites = () => axiosInstance.get('readers/me/favorites');
 
-const readerService = { getAll, getById, create, update, delete: remove, getHistory, getMyHistory, payViolation, search, toggleFavorite, getFavorites };
+export const getBasket = () => axiosInstance.get('readers/me/basket');
+export const updateBasket = (basketData) => axiosInstance.post('readers/me/basket', basketData);
+export const clearBasket = () => axiosInstance.delete('readers/me/basket');
+
+const readerService = { 
+  getAll, 
+  getById, 
+  create, 
+  update, 
+  delete: remove, 
+  getHistory, 
+  getMyHistory, 
+  payViolation, 
+  search, 
+  toggleFavorite, 
+  getFavorites,
+  getBasket,
+  updateBasket,
+  clearBasket
+};
 export default readerService;

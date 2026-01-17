@@ -57,6 +57,21 @@ class ReaderController {
     ApiResponse.success(res, favorites, 'Lấy danh sách yêu thích thành công');
   });
 
+  getBasket = asyncHandler(async (req, res) => {
+    const basket = await this.readerService.getBasket(req.user.id);
+    ApiResponse.success(res, basket, 'Lấy tủ sách thành công');
+  });
+
+  updateBasket = asyncHandler(async (req, res) => {
+    const basket = await this.readerService.updateBasket(req.user.id, req.body);
+    ApiResponse.success(res, basket, 'Cập nhật tủ sách thành công');
+  });
+
+  clearBasket = asyncHandler(async (req, res) => {
+    await this.readerService.clearBasket(req.user.id);
+    ApiResponse.success(res, null, 'Đã xóa toàn bộ tủ sách');
+  });
+
   payViolation = asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { amount } = req.body;

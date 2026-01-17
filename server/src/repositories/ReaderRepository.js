@@ -88,6 +88,29 @@ class ReaderRepository extends BaseRepository {
       .lean();
     return reader ? reader.favorites : [];
   }
+
+  async getBasket(readerId) {
+    const reader = await this.model.findById(readerId)
+      .populate('basket.book', 'title author coverImage status available')
+      .lean();
+    return reader?.basket || [];
+  }
+
+  async updateBasket(readerId, basketData) {
+    return await this.model.findByIdAndUpdate(
+      readerId,
+      { basket: basketData },
+      { new: true }
+    ).populate('basket.book', 'title author coverImage status available');
+  }
+
+  async clearBasket(readerId) {
+    return await this.model.findByIdAndUpdate(
+      readerId,
+      { basket: [] },
+      { new: true }
+    );
+  }
 }
 
 module.exports = ReaderRepository;

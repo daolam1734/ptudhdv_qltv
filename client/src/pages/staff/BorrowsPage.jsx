@@ -64,9 +64,11 @@ const BorrowsPage = () => {
 
   const [createData, setCreateData] = useState({
     readerId: "",
-    bookId: "",
+    bookIds: [],
     durationDays: 14
   });
+
+  const [selectedBooks, setSelectedBooks] = useState([]);
 
   const [returnData, setReturnData] = useState({
     status: "returned",
@@ -109,11 +111,11 @@ const BorrowsPage = () => {
     }
   };
 
-  const handleApprove = async (id, title) => {
+  const handleApprove = async (id, count) => {
     setConfirmModal({
       isOpen: true,
       title: "Duyệt yêu cầu mượn",
-      message: `Hệ thống sẽ xác nhận và giữ sách cho độc giả. Bạn có chắc chắn muốn duyệt yêu cầu mượn cuốn sách "${title}"?`,
+      message: `Hệ thống sẽ xác nhận và giữ ${count} tài liệu cho độc giả. Bạn có chắc chắn muốn duyệt yêu cầu này?`,
       confirmText: "Duyệt ngay",
       onConfirm: async () => {
         try {
@@ -127,11 +129,11 @@ const BorrowsPage = () => {
     });
   };
 
-  const handleIssue = async (id, title) => {
+  const handleIssue = async (id, count) => {
     setConfirmModal({
       isOpen: true,
       title: "Phát sách cho độc giả",
-      message: `Xác nhận độc giả đã đến nhận sách "${title}". Thời hạn 14 ngày sẽ bắt đầu tính từ hôm nay.`,
+      message: `Xác nhận độc giả đã đến nhận ${count} tài liệu. Thời hạn 14 ngày sẽ bắt đầu tính từ hôm nay.`,
       confirmText: "Phát sách ngay",
       type: "success",
       onConfirm: async () => {
@@ -146,14 +148,14 @@ const BorrowsPage = () => {
     });
   };
 
-  const handleReject = async (id, title, status) => {
+  const handleReject = async (id, count, status) => {
     setConfirmModal({
       isOpen: true,
-      title: status === 'approved' ? "Hủy yêu cầu đã duyệt" : "Từ chối yêu cầu",
-      message: status === 'approved'
-        ? `Bạn có chắc chắn muốn hủy yêu cầu mượn sách "${title}"? Sách sẽ được hoàn trả vào kho.`
-        : `Bạn có chắc chắn muốn từ chối yêu cầu mượn cuốn sách "${title}"?`,
-      confirmText: status === 'approved' ? "Hủy yêu cầu" : "Từ chối",
+      title: status === 'approved' || status === 'đã duyệt' ? "Hủy yêu cầu đã duyệt" : "Từ chối yêu cầu",
+      message: status === 'approved' || status === 'đã duyệt'
+        ? `Bạn có chắc chắn muốn hủy yêu cầu mượn ${count} tài liệu? Sách sẽ được hoàn trả vào kho.`
+        : `Bạn có chắc chắn muốn từ chối yêu cầu mượn ${count} tài liệu này?`,
+      confirmText: status === 'approved' || status === 'đã duyệt' ? "Hủy yêu cầu" : "Từ chối",
       type: "danger",
       onConfirm: async () => {
         try {
@@ -195,13 +197,14 @@ const BorrowsPage = () => {
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
     try {
-      if (!createData.readerId || !createData.bookId) {
-        toast.error("Vui lòng chọn đầy đủ độc giả và sách");
+      if (!createData.readerId || createData.bookIds.length === 0) {
+        toast.error("Vui lòng chọn độc giả và ít nhất một cuốn sách");
         return;
       }
       const res = await borrowService.create(createData);
       setShowCreateModal(false);
-      setCreateData({ readerId: "", bookId: "", durationDays: 14 });
+      setCreateData({ readerId: "", bookIds: [], durationDays: 14 });
+      setSelectedBooks([]);
       setReaderResults([]);
       setBookResults([]);
       toast.success(res.message || 'Đã tạo lượt mượn mới thành công!');
@@ -221,11 +224,11 @@ const BorrowsPage = () => {
     }
   };
 
-  const handleRenew = async (id, title) => {
+  const handleRenew = async (id, count) => {
     setConfirmModal({
       isOpen: true,
-      title: "Gia hạn sách",
-      message: `Gia hạn thêm 14 ngày cho cuốn sách "${title}"?`,
+      title: "Gia hạn đợt mượn",
+      message: `Gia hạn thêm 14 ngày cho tất cả ${count} tài liệu trong đợt mượn này?`,
       confirmText: "Gia hạn ngay",
       onConfirm: async () => {
         try {
@@ -412,26 +415,48 @@ const BorrowsPage = () => {
             <tbody className="divide-y divide-gray-100">
               {records.map((record) => (
                 <tr key={record._id} className="hover:bg-gray-50/50 transition-colors group">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-16 shrink-0 relative overflow-hidden rounded-lg shadow-sm">
-                        <img
-                          src={record.bookId?.coverImage || "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=200"}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          alt=""
-                        />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-bold text-gray-900 group-hover:text-primary transition-colors truncate max-w-[200px]" title={record.bookId?.title}>{record.bookId?.title}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <User size={12} className="text-gray-400" />
-                          <span className="text-xs font-medium text-gray-500 truncate max-w-[150px]">{record.readerId?.fullName}</span>
+                  <td className="px-6 py-4 align-top">
+                    <div className="flex flex-col gap-3">
+                         <div className="flex items-center gap-2 pb-2 border-b border-gray-50">
+                          <User size={14} className="text-primary" />
+                          <span className="text-sm font-black text-gray-900 truncate max-w-[200px]">{record.readerId?.fullName}</span>
                         </div>
-                      </div>
+                        <div className="space-y-2">
+                             {(() => {
+                               // Nhóm các sách trùng nhau
+                               const grouped = (record.books || []).reduce((acc, curr) => {
+                                 const exists = acc.find(b => b.bookId?._id === curr.bookId?._id);
+                                 if (exists) exists.quantity += 1;
+                                 else acc.push({ ...curr, quantity: 1 });
+                                 return acc;
+                               }, []);
+
+                               return grouped.map((bItem, idx) => (
+                                 <div key={idx} className="flex items-center gap-3 bg-gray-50/50 p-2 rounded-xl border border-gray-100/50">
+                                   <div className="w-8 h-10 shrink-0 relative overflow-hidden rounded shadow-sm border border-white">
+                                     <img
+                                       src={bItem.bookId?.coverImage || "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=200"}
+                                       className="w-full h-full object-cover"
+                                       alt=""
+                                     />
+                                     {bItem.quantity > 1 && (
+                                       <div className="absolute top-0 right-0 bg-primary text-white text-[8px] font-black px-1 py-0.5 rounded-bl shadow-sm">
+                                         x{bItem.quantity}
+                                       </div>
+                                     )}
+                                   </div>
+                                   <div className="min-w-0">
+                                     <p className="text-[11px] font-bold text-gray-700 truncate max-w-[170px]" title={bItem.bookId?.title}>{bItem.bookId?.title}</p>
+                                     <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">{bItem.bookId?.isbn}</p>
+                                   </div>
+                                 </div>
+                               ));
+                             })()}
+                        </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="flex gap-6">
+                  <td className="px-6 py-4 align-top">
+                    <div className="flex flex-col gap-4">
                       <div>
                         <p className="text-xs font-semibold text-gray-400 mb-1">Ngày mượn</p>
                         <p className="text-xs font-semibold text-gray-700">
@@ -473,14 +498,14 @@ const BorrowsPage = () => {
                       {(record.status === 'pending' || record.status === 'đang chờ') && (
                         <>
                           <button
-                            onClick={() => handleApprove(record._id, record.bookId?.title)}
+                            onClick={() => handleApprove(record._id, record.books?.length || 1)}
                             className="px-3 py-2 bg-amber-50 text-amber-600 rounded-xl hover:bg-amber-600 hover:text-white transition-all flex items-center gap-1.5 font-bold text-xs"
                             title="Chấp nhận yêu cầu"
                           >
                             <CheckCircle size={16} /> Duyệt
                           </button>
                           <button
-                            onClick={() => handleReject(record._id, record.bookId?.title, 'pending')}
+                            onClick={() => handleReject(record._id, record.books?.length || 1, 'pending')}
                             className="p-2.5 bg-red-50 text-red-400 rounded-xl hover:bg-red-500 hover:text-white transition-all"
                             title="Từ chối yêu cầu"
                           >
@@ -491,14 +516,14 @@ const BorrowsPage = () => {
                       {(record.status === 'approved' || record.status === 'đã duyệt') && (
                         <>
                           <button
-                            onClick={() => handleIssue(record._id, record.bookId?.title)}
+                            onClick={() => handleIssue(record._id, record.books?.length || 1)}
                             className="px-3 py-2 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all flex items-center gap-1.5 font-bold text-xs"
                             title="Phát sách cho độc giả"
                           >
                             <Zap size={16} /> Phát sách
                           </button>
                           <button
-                            onClick={() => handleReject(record._id, record.bookId?.title, 'approved')}
+                            onClick={() => handleReject(record._id, record.books?.length || 1, 'approved')}
                             className="p-2.5 bg-red-50 text-red-400 rounded-xl hover:bg-red-500 hover:text-white transition-all"
                             title="Hủy yêu cầu"
                           >
@@ -516,7 +541,7 @@ const BorrowsPage = () => {
                             <RotateCcw size={16} /> Thu hồi
                           </button>
                           <button
-                            onClick={() => handleRenew(record._id, record.bookId?.title)}
+                            onClick={() => handleRenew(record._id, record.books?.length || 1)}
                             disabled={record.renewalCount >= 2 || new Date() > new Date(record.dueDate)}
                             className="p-2.5 bg-primary/5 text-primary rounded-xl hover:bg-primary hover:text-white transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                             title={record.renewalCount >= 2
@@ -658,9 +683,15 @@ const BorrowsPage = () => {
                       {bookResults.map(b => (
                         <button
                           key={b._id} type="button"
-                          disabled={b.available <= 0}
-                          className={`w-full p-3 text-left rounded-xl hover:bg-primary/5 flex items-center justify-between transition-colors ${createData.bookId === b._id ? 'bg-primary/5' : ''} ${b.available <= 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
-                          onClick={() => { setCreateData({ ...createData, bookId: b._id }); setBookResults([]); }}
+                          disabled={b.available <= 0 || createData.bookIds.includes(b._id)}
+                          className={`w-full p-3 text-left rounded-xl hover:bg-primary/5 flex items-center justify-between transition-colors ${createData.bookIds.includes(b._id) ? 'bg-primary/5 opacity-80' : ''} ${b.available <= 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          onClick={() => {
+                            if (!createData.bookIds.includes(b._id)) {
+                              setCreateData({ ...createData, bookIds: [...createData.bookIds, b._id] });
+                              setSelectedBooks([...selectedBooks, b]);
+                              setBookResults([]);
+                            }
+                          }}
                         >
                           <div className="flex items-center gap-3">
                             <img src={b.coverImage} className="w-10 h-14 object-cover rounded-lg shadow-sm" alt="" />
@@ -671,7 +702,7 @@ const BorrowsPage = () => {
                           </div>
                           <div className="text-right">
                             <p className={`text-xs font-bold ${b.available > 0 ? 'text-primary' : 'text-red-500'}`}>
-                              {b.available > 0 ? `Sẵn có: ${b.available}` : "Hết sách"}
+                              {b.available > 0 ? (createData.bookIds.includes(b._id) ? "Đã nằm trong danh sách" : `Sẵn có: ${b.available}`) : "Hết sách"}
                             </p>
                             <p className="text-[10px] text-gray-400 font-medium">{b.isbn}</p>
                           </div>
@@ -680,15 +711,38 @@ const BorrowsPage = () => {
                     </div>
                   )}
                 </div>
-                {createData.bookId && (
-                  <div className="mt-2 p-3 bg-primary/5 rounded-xl border border-primary/10 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 size={16} className="text-primary" />
-                      <span className="text-xs font-bold text-gray-700">Đã chọn: {bookResults.find(b => b._id === createData.bookId)?.title || "Sách #" + createData.bookId.substring(18)}</span>
+
+                {/* Selected Books List */}
+                <div className="space-y-2 mt-4 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                  {selectedBooks.map((book, idx) => (
+                    <div key={book._id || idx} className="p-3 bg-primary/5 rounded-xl border border-primary/10 flex items-center justify-between group">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-primary/10 text-primary rounded-lg flex items-center justify-center font-bold text-xs">{idx + 1}</div>
+                        <div>
+                          <p className="text-xs font-bold text-gray-800 leading-tight">{book.title}</p>
+                          <p className="text-[10px] text-gray-500 font-medium uppercase tracking-widest">{book.isbn}</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newIds = createData.bookIds.filter(id => id !== book._id);
+                          const newBooks = selectedBooks.filter(b => b._id !== book._id);
+                          setCreateData({ ...createData, bookIds: newIds });
+                          setSelectedBooks(newBooks);
+                        }}
+                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                      >
+                        <X size={14} />
+                      </button>
                     </div>
-                    <button type="button" onClick={() => setCreateData({ ...createData, bookId: '' })} className="text-[10px] font-bold text-red-500 hover:underline">Hủy chọn</button>
-                  </div>
-                )}
+                  ))}
+                  {selectedBooks.length === 0 && (
+                    <p className="text-center py-4 text-gray-400 text-xs font-medium italic border-2 border-dashed border-gray-100 rounded-2xl">
+                      Chưa có tài liệu nào được chọn
+                    </p>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -721,8 +775,15 @@ const BorrowsPage = () => {
               <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <RotateCcw size={32} />
               </div>
-              <h4 className="text-xl font-bold text-gray-900">Xác nhận thu hồi sách</h4>
-              <p className="text-sm font-medium text-gray-500 mt-2 italic px-4 leading-relaxed">"{selectedRecord.bookId?.title}"</p>
+              <h4 className="text-xl font-bold text-gray-900">Xác nhận thu hồi tài liệu</h4>
+              <div className="mt-4 px-6 space-y-2">
+                {(selectedRecord.books || [{ bookId: selectedRecord.bookId }]).map((item, idx) => (
+                  <p key={idx} className="text-xs font-bold text-gray-600 bg-gray-50 py-2 px-3 rounded-lg border border-gray-100 flex items-center gap-2">
+                    <BookOpen size={14} className="text-primary" />
+                    {item.bookId?.title}
+                  </p>
+                ))}
+              </div>
             </div>
 
             <form onSubmit={handleReturnSubmit} className="p-8 space-y-6">

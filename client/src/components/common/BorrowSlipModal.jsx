@@ -95,25 +95,44 @@ const BorrowSlipModal = ({ isOpen, onClose, borrow }) => {
             {/* Book Section */}
             <div className="space-y-4">
               <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                <Book size={14} className="text-primary" /> Thông tin tài liệu
+                <Book size={14} className="text-primary" /> {borrow.books?.length > 1 ? `Danh sách tài liệu (${borrow.books.length})` : 'Thông tin tài liệu'}
               </h4>
-              <div className="bg-white p-4 rounded-2xl border border-gray-100 flex gap-4 shadow-sm">
-                <div className="w-20 h-28 bg-neutral-light rounded-lg overflow-hidden flex-shrink-0 shadow-inner">
-                  {borrow.bookId?.coverImage ? (
-                    <img src={borrow.bookId.coverImage} className="w-full h-full object-cover" alt="" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-300">
-                       <Book size={32} />
+              <div className="space-y-3">
+                {(() => {
+                   const items = borrow.books || (borrow.bookId ? [{ bookId: borrow.bookId }] : []);
+                   const grouped = items.reduce((acc, curr) => {
+                     const exists = acc.find(b => b.bookId?._id === curr.bookId?._id);
+                     if (exists) exists.quantity += 1;
+                     else acc.push({ ...curr, quantity: 1 });
+                     return acc;
+                   }, []);
+
+                   return grouped.map((bItem, idx) => (
+                    <div key={idx} className="bg-white p-3 rounded-2xl border border-gray-100 flex gap-4 shadow-sm relative">
+                      <div className="w-16 h-22 bg-neutral-light rounded-lg overflow-hidden flex-shrink-0 shadow-inner relative">
+                        {bItem.bookId?.coverImage ? (
+                          <img src={bItem.bookId.coverImage} className="w-full h-full object-cover" alt="" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-gray-300">
+                            <Book size={24} />
+                          </div>
+                        )}
+                        {bItem.quantity > 1 && (
+                          <div className="absolute top-0 right-0 bg-primary text-white text-[10px] font-black px-2 py-1 rounded-bl-lg shadow-sm">
+                            x{bItem.quantity}
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-black text-neutral-dark text-xs line-clamp-2 leading-tight mb-1">{bItem.bookId?.title}</p>
+                        <p className="text-[10px] text-gray-400 font-bold mb-2">{bItem.bookId?.author}</p>
+                        <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-neutral-light rounded text-[9px] font-bold text-gray-400">
+                          <Hash size={9} /> {bItem.bookId?.isbn || 'N/A'}
+                        </div>
+                      </div>
                     </div>
-                  )}
-                </div>
-                <div className="min-w-0">
-                  <p className="font-black text-neutral-dark text-sm line-clamp-2 leading-tight mb-1">{borrow.bookId?.title}</p>
-                  <p className="text-xs text-gray-500 font-medium mb-2">{borrow.bookId?.author}</p>
-                  <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-neutral-light rounded text-[10px] font-bold text-gray-400">
-                    <Hash size={10} /> {borrow.bookId?.isbn || 'N/A'}
-                  </div>
-                </div>
+                  ));
+                })()}
               </div>
             </div>
 

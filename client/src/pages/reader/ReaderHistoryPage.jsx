@@ -31,11 +31,12 @@ const ReaderHistoryPage = () => {
   const [cancellingItem, setCancellingItem] = useState(null);
   const [selectedBorrow, setSelectedBorrow] = useState(null);
   const [showSlipModal, setShowSlipModal] = useState(false);
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
 
   useEffect(() => {
     fetchHistory();
-  }, [user]);
+    if (user) refreshUser();
+  }, []); // Remove user from here to avoid infinite loops, but refresh once on mount
 
   const fetchHistory = async () => {
     try {
@@ -75,7 +76,7 @@ const ReaderHistoryPage = () => {
   };
 
   const filteredHistory = history.filter(item => {
-    const matchesSearch = item.bookId?.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const matchesSearch = (item.books || []).some(b => b.bookId?.title?.toLowerCase().includes(searchTerm.toLowerCase())) ||
       item._id.toLowerCase().includes(searchTerm.toLowerCase());
     
     // Status filter mapping for bilingual support
@@ -246,24 +247,46 @@ const ReaderHistoryPage = () => {
                   </tr>
                 ))
               ) : filteredHistory.length > 0 ? (
-                filteredHistory.map((item) => (
-                  <tr key={item._id} className="hover:bg-gray-50/30 transition-colors group">
-                    <td className="px-8 py-6">
-                      <Link to={`/books/${item.bookId?._id}`} className="flex items-center gap-4">
-                        <div className="w-12 h-16 bg-white rounded-lg flex items-center justify-center text-gray-200 shadow-sm group-hover:text-primary transition-colors border border-gray-100 shrink-0 relative overflow-hidden">
-                          {item.bookId?.coverImage ? (
-                            <img src={item.bookId.coverImage} className="w-full h-full object-cover" />
-                          ) : (
-                            <Book size={24} strokeWidth={1.5} />
-                          )}
+                filteredHistory.map((item) => {
+                  // Nhóm các sách trùng nhau trong cùng một phiếu mượn
+                  const groupedBooks = (item.books || []).reduce((acc, curr) => {
+                    const existingBook = acc.find(b => b.bookId?._id === curr.bookId?._id);
+                    if (existingBook) {
+                      existingBook.quantity += 1;
+                    } else {
+                      acc.push({ ...curr, quantity: 1 });
+                    }
+                    return acc;
+                  }, []);
+
+                  return (
+                    <tr key={item._id} className="hover:bg-gray-50/30 transition-colors group">
+                      <td className="px-8 py-6 align-top">
+                        <div className="space-y-4">
+                          {groupedBooks.map((bItem, idx) => (
+                             <Link key={idx} to={`/books/${bItem.bookId?._id}`} className="flex items-center gap-4 hover:opacity-80 transition-opacity">
+                              <div className="w-10 h-14 bg-white rounded-lg flex items-center justify-center text-gray-200 shadow-sm border border-gray-100 shrink-0 relative overflow-hidden">
+                                {bItem.bookId?.coverImage ? (
+                                  <img src={bItem.bookId.coverImage} className="w-full h-full object-cover" />
+                                ) : (
+                                  <Book size={18} strokeWidth={1.5} />
+                                )}
+                                {bItem.quantity > 1 && (
+                                  <div className="absolute top-0 right-0 bg-primary text-white text-[9px] font-black px-1.5 py-0.5 rounded-bl-lg shadow-sm">
+                                    x{bItem.quantity}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="min-w-0">
+                                  <p className="font-bold text-gray-900 text-xs truncate max-w-[200px]">{bItem.bookId?.title || "N/A"}</p>
+                                  <p className="text-[9px] text-gray-400 font-bold mt-0.5 uppercase tracking-wider">{bItem.bookId?.author}</p>
+                              </div>
+                             </Link>
+                          ))}
+                          <p className="text-[10px] text-gray-300 font-bold mt-2 uppercase tracking-wider border-t border-gray-50 pt-2 shadow-sm w-fit">Mã: #{item._id.slice(-8).toUpperCase()}</p>
                         </div>
-                        <div className="min-w-0">
-                          <p className="font-bold text-gray-900 text-sm group-hover:text-primary transition-colors truncate max-w-[250px]">{item.bookId?.title || "N/A"}</p>
-                          <p className="text-[10px] text-gray-400 font-bold mt-1 uppercase tracking-wider">Mã: #{item._id.slice(-8).toUpperCase()}</p>
-                        </div>
-                      </Link>
-                    </td>
-                    <td className="px-8 py-6">
+                      </td>
+                    <td className="px-8 py-6 align-top">
                       {(['pending', 'approved', 'rejected', 'đang chờ', 'đã duyệt', 'từ chối', 'đã hủy'].includes(item.status)) ? (
                         <p className="text-[10px] font-black uppercase text-gray-300 tracking-widest italic">Đang xử lý...</p>
                       ) : (
@@ -287,14 +310,17 @@ const ReaderHistoryPage = () => {
                             Đã gia hạn {item.renewalCount} lần
                           </span>
                         )}
+                        <p className="text-[11px] font-black text-gray-400 mt-1">
+                          Tổng số: {item.books?.length || 1} cuốn
+                        </p>
                         {item.violation && item.violation.amount > 0 && (
                           <div className="flex flex-col items-center gap-0.5 animate-in fade-in slide-in-from-top-1 duration-300">
-                             <div className="flex items-center gap-1 text-[10px] font-bold text-rose-600 bg-rose-50 px-2 py-1 rounded-md border border-rose-100 shadow-sm shadow-rose-50">
-                                <AlertCircle size={10} strokeWidth={3} />
+                             <div className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-md border shadow-sm ${item.violation.isPaid ? 'text-emerald-600 bg-emerald-50 border-emerald-100' : 'text-rose-600 bg-rose-50 border-rose-100 shadow-rose-50'}`}>
+                                {item.violation.isPaid ? <CheckCircle2 size={10} strokeWidth={3} /> : <AlertCircle size={10} strokeWidth={3} />}
                                 {item.violation.amount.toLocaleString()}đ
                              </div>
                              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tight italic">
-                                {item.violation.reason}
+                                {item.violation.isPaid ? 'Đã nộp phí' : item.violation.reason}
                              </span>
                           </div>
                         )}
@@ -329,8 +355,9 @@ const ReaderHistoryPage = () => {
                       )}
                     </td>
                   </tr>
-                ))
-              ) : (
+                );
+              })
+            ) : (
                 <tr>
                   <td colSpan="4" className="px-8 py-20 text-center">
                     <div className="flex flex-col items-center gap-4 opacity-20">
