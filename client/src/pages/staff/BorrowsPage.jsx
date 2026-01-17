@@ -1,11 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
 import borrowService from "../../services/borrowService";
-import readerService from "../../services/readerService";
-import bookService from "../../services/bookService";
 import {
   Search,
-  Plus,
   RotateCcw,
   CheckCircle,
   Clock,
@@ -25,7 +22,9 @@ import {
   FileText,
   Trash2,
   X,
-  AlertCircle
+  AlertCircle,
+  ShieldCheck,
+  CreditCard
 } from "lucide-react";
 import ConfirmModal from "../../components/common/ConfirmModal";
 import BorrowSlipModal from "../../components/common/BorrowSlipModal";
@@ -39,7 +38,6 @@ const BorrowsPage = () => {
   const [activeTab, setActiveTab] = useState("all");
 
   // Modals state
-  const [showCreateModal, setShowCreateModal] = useState(false);
   const [showReturnModal, setShowReturnModal] = useState(false);
   const [showResultModal, setShowResultModal] = useState(false);
   const [showSlipModal, setShowSlipModal] = useState(false);
@@ -56,27 +54,43 @@ const BorrowsPage = () => {
     type: "info" // 'info', 'danger', 'success'
   });
 
-  // Search results for create modal
-  const [readerResults, setReaderResults] = useState([]);
-  const [bookResults, setBookResults] = useState([]);
-  const [searchingReader, setSearchingReader] = useState(false);
-  const [searchingBook, setSearchingBook] = useState(false);
-
-  const [createData, setCreateData] = useState({
-    readerId: "",
-    bookIds: [],
-    durationDays: 14
-  });
-
-  const [selectedBooks, setSelectedBooks] = useState([]);
-
   const [returnData, setReturnData] = useState({
-    status: "returned",
+    status: "đã trả",
     notes: "",
     hasViolation: false,
     violationAmount: 0,
-    violationReason: ""
+    violationReason: "",
+    books: []
   });
+
+  useEffect(() => {
+    if (selectedRecord && showReturnModal) {
+      // Tự động tính phí quá hạn
+      const now = new Date();
+      const dueDate = new Date(selectedRecord.dueDate);
+      let overdueFee = 0;
+      
+      if (now > dueDate) {
+        const diffDays = Math.ceil((now - dueDate) / (1000 * 60 * 60 * 24));
+        overdueFee = diffDays * 5000;
+      }
+
+      setReturnData({
+        status: overdueFee > 0 ? "đã trả (vi phạm)" : "đã trả",
+        notes: "",
+        hasViolation: overdueFee > 0,
+        violationAmount: overdueFee,
+        violationReason: overdueFee > 0 ? "Phí quá hạn" : "",
+        books: (selectedRecord.books || []).map(b => ({
+          bookId: b.bookId?._id || b.bookId,
+          title: b.bookId?.title,
+          status: overdueFee > 0 ? "đã trả (vi phạm)" : "đã trả",
+          violationAmount: 0,
+          reason: ""
+        }))
+      });
+    }
+  }, [selectedRecord, showReturnModal]);
 
   useEffect(() => {
     fetchRecords();
@@ -172,6 +186,8 @@ const BorrowsPage = () => {
   const handleReturnSubmit = async (e) => {
     e.preventDefault();
     try {
+      // violationAmount ở đây chỉ gửi phần "Phí quá hạn/Ghi chú chung" 
+      // Server sẽ tự tính toán tổng dựa trên books + violationAmount gửi lên
       const res = await borrowService.returnBook(selectedRecord._id, returnData);
 
       // Save result and show result modal
@@ -181,46 +197,17 @@ const BorrowsPage = () => {
 
       setSelectedRecord(null);
       setReturnData({
-        status: "returned",
+        status: "đã trả",
         notes: "",
         hasViolation: false,
         violationAmount: 0,
-        violationReason: ""
+        violationReason: "",
+        books: []
       });
 
       fetchRecords();
     } catch (err) {
       toast.error(err.response?.data?.message || "Không thể xử lý trả sách");
-    }
-  };
-
-  const handleCreateSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      if (!createData.readerId || createData.bookIds.length === 0) {
-        toast.error("Vui lòng chọn độc giả và ít nhất một cuốn sách");
-        return;
-      }
-      const res = await borrowService.create(createData);
-      setShowCreateModal(false);
-      setCreateData({ readerId: "", bookIds: [], durationDays: 14 });
-      setSelectedBooks([]);
-      setReaderResults([]);
-      setBookResults([]);
-      toast.success(res.message || 'Đã tạo lượt mượn mới thành công!');
-      fetchRecords();
-    } catch (err) {
-      const errorMsg = err.response?.data?.message || "Lỗi khi tạo lượt mượn";
-      toast.error(errorMsg, {
-        duration: 5000,
-        style: {
-          borderRadius: '1rem',
-          background: '#FFF',
-          color: '#333',
-          border: '1px solid #E5E7EB',
-          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
-        }
-      });
     }
   };
 
@@ -240,32 +227,6 @@ const BorrowsPage = () => {
         }
       }
     });
-  };
-
-  const searchReaders = async (q) => {
-    if (q.length < 2) return;
-    setSearchingReader(true);
-    try {
-      const res = await readerService.getAll({ search: q, limit: 5 });
-      setReaderResults(res.data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setSearchingReader(false);
-    }
-  };
-
-  const searchBooks = async (q) => {
-    if (q.length < 2) return;
-    setSearchingBook(true);
-    try {
-      const res = await bookService.getAll({ title: q, limit: 5 });
-      setBookResults(res.data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setSearchingBook(false);
-    }
   };
 
   const getStatusBadge = (status) => {
@@ -341,16 +302,10 @@ const BorrowsPage = () => {
           <p className="text-gray-500 font-medium mt-1">Theo dõi hoạt động mượn sách và thời hạn trả tài liệu</p>
         </div>
         <div className="flex items-center gap-4">
-          <div className="text-right hidden sm:block px-6 border-r border-gray-100">
+          <div className="text-right sm:block px-6">
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Tổng lượt mượn</p>
             <p className="text-2xl font-bold text-primary">{pagination.total || 0}</p>
           </div>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="px-6 py-3 bg-primary text-white rounded-xl font-bold hover:bg-primary-dark transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
-          >
-            <Plus size={20} /> Tạo lượt mượn mới
-          </button>
         </div>
       </div>
 
@@ -413,7 +368,12 @@ const BorrowsPage = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {records.map((record) => (
+              {records.map((record) => {
+                const isOverdue = (record.status === 'overdue' || record.status === 'quá hạn' || 
+                                  ((record.status === 'borrowed' || record.status === 'đang mượn') && new Date(record.dueDate) < new Date()));
+                const displayStatus = isOverdue ? 'overdue' : record.status;
+
+                return (
                 <tr key={record._id} className="hover:bg-gray-50/50 transition-colors group">
                   <td className="px-6 py-4 align-top">
                     <div className="flex flex-col gap-3">
@@ -467,7 +427,7 @@ const BorrowsPage = () => {
                       </div>
                       <div>
                         <p className="text-xs font-semibold text-gray-400 mb-1">Hạn trả</p>
-                        <p className={`text-xs font-bold ${(record.status === 'overdue' || record.status === 'quá hạn') ? 'text-rose-500' : 'text-primary'}`}>
+                        <p className={`text-xs font-bold ${isOverdue ? 'text-rose-500' : 'text-primary'}`}>
                           {(['pending', 'approved', 'rejected', 'đang chờ', 'đã duyệt', 'từ chối', 'đã hủy'].includes(record.status))
                             ? '---'
                             : new Date(record.dueDate).toLocaleDateString()}
@@ -477,7 +437,7 @@ const BorrowsPage = () => {
                   </td>
                   <td className="px-6 py-4 text-center">
                     <div className="flex flex-col items-center gap-1">
-                      {getStatusBadge(record.status)}
+                      {getStatusBadge(displayStatus)}
                       {record.renewalCount > 0 && (
                         <span className="text-[10px] font-black text-primary bg-primary/5 px-2 py-0.5 rounded-md flex items-center gap-1">
                           <Clock size={10} strokeWidth={3} /> Đã gia hạn {record.renewalCount} lần
@@ -557,7 +517,8 @@ const BorrowsPage = () => {
                     </div>
                   </td>
                 </tr>
-              ))}
+              );
+              })}
             </tbody>
           </table>
         </div>
@@ -604,252 +565,210 @@ const BorrowsPage = () => {
         </div>
       </div>
 
-      {/* CREATE MODAL */}
-      {showCreateModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowCreateModal(false)}></div>
-          <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in duration-300">
-            <div className="bg-white px-8 py-6 border-b border-gray-100 flex justify-between items-center">
-              <div>
-                <h4 className="text-xl font-bold text-gray-900">Cấp quyền mượn sách</h4>
-                <p className="text-sm font-medium text-gray-500 mt-0.5">Vui lòng chọn độc giả và tài liệu để khởi tạo giao dịch</p>
-              </div>
-              <button onClick={() => setShowCreateModal(false)} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-all">
-                <X size={20} />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateSubmit} className="p-8 space-y-6">
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700 ml-1">1. Tìm kiếm độc giả <span className="text-red-500">*</span></label>
-                <div className="relative">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                  <input
-                    type="text"
-                    className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all font-medium"
-                    placeholder="Nhập tên hoặc số CCCD..."
-                    onChange={(e) => searchReaders(e.target.value)}
-                  />
-                  {readerResults.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 z-50 mt-2 bg-white rounded-2xl shadow-xl border border-gray-200 p-2 space-y-1 max-h-64 overflow-y-auto">
-                      {readerResults.map(r => (
-                        <button
-                          key={r._id} type="button"
-                          className={`w-full p-3 text-left rounded-xl hover:bg-primary-light/10 flex items-center justify-between transition-colors ${createData.readerId === r._id ? 'bg-primary-light/10' : ''}`}
-                          onClick={() => { setCreateData({ ...createData, readerId: r._id }); setReaderResults([]); }}
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center font-bold text-sm">{r.fullName?.charAt(0)}</div>
-                            <div>
-                              <p className="font-bold text-gray-900 text-sm leading-tight">{r.fullName}</p>
-                              <p className="text-[10px] text-gray-500 font-medium uppercase tracking-wider">{r.idCard || r.username}</p>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div className="flex gap-1 justify-end">
-                              {r.unpaidViolations > 0 && <span className="px-2 py-0.5 bg-red-50 text-red-500 rounded text-[10px] font-bold">Nợ vi phạm: {r.unpaidViolations.toLocaleString()}đ</span>}
-                              {r.status !== 'active' && <span className="px-2 py-0.5 bg-gray-100 text-gray-500 rounded text-[10px] font-bold">Khóa</span>}
-                            </div>
-                            <p className="text-[10px] text-gray-400 font-medium mt-1">Đang mượn: {r.currentBorrowCount}/{r.borrowLimit}</p>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                {createData.readerId && (
-                  <div className="mt-2 p-3 bg-primary/5 rounded-xl border border-primary/10 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 size={16} className="text-primary" />
-                      <span className="text-xs font-bold text-gray-700">Đã chọn: {readerResults.find(r => r._id === createData.readerId)?.fullName || "Độc giả #" + createData.readerId.substring(18)}</span>
-                    </div>
-                    <button type="button" onClick={() => setCreateData({ ...createData, readerId: '' })} className="text-[10px] font-bold text-red-500 hover:underline">Hủy chọn</button>
-                  </div>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700 ml-1">2. Chọn tài liệu mượn <span className="text-red-500">*</span></label>
-                <div className="relative">
-                  <BookOpen className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                  <input
-                    type="text"
-                    className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all font-medium"
-                    placeholder="Tìm tiêu đề sách hoặc mã ISBN..."
-                    onChange={(e) => searchBooks(e.target.value)}
-                  />
-                  {bookResults.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 z-50 mt-2 bg-white rounded-2xl shadow-xl border border-gray-200 p-2 space-y-1 max-h-64 overflow-y-auto">
-                      {bookResults.map(b => (
-                        <button
-                          key={b._id} type="button"
-                          disabled={b.available <= 0 || createData.bookIds.includes(b._id)}
-                          className={`w-full p-3 text-left rounded-xl hover:bg-primary/5 flex items-center justify-between transition-colors ${createData.bookIds.includes(b._id) ? 'bg-primary/5 opacity-80' : ''} ${b.available <= 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
-                          onClick={() => {
-                            if (!createData.bookIds.includes(b._id)) {
-                              setCreateData({ ...createData, bookIds: [...createData.bookIds, b._id] });
-                              setSelectedBooks([...selectedBooks, b]);
-                              setBookResults([]);
-                            }
-                          }}
-                        >
-                          <div className="flex items-center gap-3">
-                            <img src={b.coverImage} className="w-10 h-14 object-cover rounded-lg shadow-sm" alt="" />
-                            <div className="min-w-0">
-                              <p className="font-bold text-gray-900 text-sm leading-tight truncate max-w-[200px]">{b.title}</p>
-                              <p className="text-[10px] text-gray-500 font-medium mt-0.5">{b.author}</p>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <p className={`text-xs font-bold ${b.available > 0 ? 'text-primary' : 'text-red-500'}`}>
-                              {b.available > 0 ? (createData.bookIds.includes(b._id) ? "Đã nằm trong danh sách" : `Sẵn có: ${b.available}`) : "Hết sách"}
-                            </p>
-                            <p className="text-[10px] text-gray-400 font-medium">{b.isbn}</p>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Selected Books List */}
-                <div className="space-y-2 mt-4 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-                  {selectedBooks.map((book, idx) => (
-                    <div key={book._id || idx} className="p-3 bg-primary/5 rounded-xl border border-primary/10 flex items-center justify-between group">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-primary/10 text-primary rounded-lg flex items-center justify-center font-bold text-xs">{idx + 1}</div>
-                        <div>
-                          <p className="text-xs font-bold text-gray-800 leading-tight">{book.title}</p>
-                          <p className="text-[10px] text-gray-500 font-medium uppercase tracking-widest">{book.isbn}</p>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const newIds = createData.bookIds.filter(id => id !== book._id);
-                          const newBooks = selectedBooks.filter(b => b._id !== book._id);
-                          setCreateData({ ...createData, bookIds: newIds });
-                          setSelectedBooks(newBooks);
-                        }}
-                        className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                      >
-                        <X size={14} />
-                      </button>
-                    </div>
-                  ))}
-                  {selectedBooks.length === 0 && (
-                    <p className="text-center py-4 text-gray-400 text-xs font-medium italic border-2 border-dashed border-gray-100 rounded-2xl">
-                      Chưa có tài liệu nào được chọn
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-gray-700 ml-1">Thời hạn mượn (Ngày)</label>
-                  <input
-                    type="number"
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all font-bold text-center"
-                    value={createData.durationDays}
-                    onChange={(e) => setCreateData({ ...createData, durationDays: e.target.value })}
-                  />
-                </div>
-                <div className="flex items-end">
-                  <button type="submit" className="w-full h-[52px] bg-primary text-white rounded-xl font-bold hover:bg-primary-dark transition-all shadow-lg shadow-primary/20">
-                    Cấp quyền mượn
-                  </button>
-                </div>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* RETURN MODAL */}
+      {/* RETURN MODAL - REDESIGNED */}
       {showReturnModal && selectedRecord && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowReturnModal(false)}></div>
-          <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom duration-300">
-            <div className="p-8 border-b border-gray-100 text-center">
-              <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <RotateCcw size={32} />
-              </div>
-              <h4 className="text-xl font-bold text-gray-900">Xác nhận thu hồi tài liệu</h4>
-              <div className="mt-4 px-6 space-y-2">
-                {(selectedRecord.books || [{ bookId: selectedRecord.bookId }]).map((item, idx) => (
-                  <p key={idx} className="text-xs font-bold text-gray-600 bg-gray-50 py-2 px-3 rounded-lg border border-gray-100 flex items-center gap-2">
-                    <BookOpen size={14} className="text-primary" />
-                    {item.bookId?.title}
-                  </p>
-                ))}
-              </div>
+          <div className="absolute inset-0 bg-slate-900/70 backdrop-blur-md transition-opacity" onClick={() => setShowReturnModal(false)}></div>
+          <div className="relative w-full max-w-2xl bg-white rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in duration-300 flex flex-col max-h-[90vh]">
+            {/* Modal Header */}
+            <div className="p-8 bg-gradient-to-br from-white to-gray-50 border-b border-gray-100 shrink-0">
+               <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 bg-primary text-white rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20 transition-transform hover:scale-105">
+                      <RotateCcw size={28} />
+                    </div>
+                    <div>
+                      <h4 className="text-xl font-black text-gray-900 tracking-tight">Thu hồi Tài liệu</h4>
+                      <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-0.5">Xác nhận tình trạng & Xử lý lưu thông</p>
+                    </div>
+                  </div>
+                  <button onClick={() => setShowReturnModal(false)} className="p-2 hover:bg-gray-100 rounded-xl transition-colors text-gray-400">
+                    <X size={20} />
+                  </button>
+               </div>
+
+               <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Độc giả</p>
+                    <p className="text-sm font-black text-gray-800">{selectedRecord.readerId?.fullName}</p>
+                  </div>
+                  <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Mã phiên mượn</p>
+                    <p className="text-sm font-mono font-bold text-primary">{selectedRecord.borrowSessionId?.split('-').slice(0, 2).join('-')}</p>
+                  </div>
+               </div>
             </div>
 
-            <form onSubmit={handleReturnSubmit} className="p-8 space-y-6">
+            {/* Modal Content - Scrollable */}
+            <form onSubmit={handleReturnSubmit} className="flex-1 overflow-y-auto no-scrollbar p-8 space-y-8">
+              {/* Individual Books Assessment */}
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-gray-700 ml-1">Ghi chú tình trạng trả sách</label>
+                <label className="text-[11px] font-black text-primary uppercase tracking-[0.2em] flex items-center gap-2">
+                   <BookOpen size={14} /> Kiểm tra danh sách tài liệu
+                </label>
+                <div className="space-y-3">
+                  {returnData.books.map((b, idx) => (
+                    <div key={idx} className="group bg-white rounded-3xl border border-gray-100 p-5 hover:border-primary/30 transition-all hover:shadow-md">
+                      <div className="flex items-start gap-4">
+                        <div className="w-12 h-16 bg-gray-50 rounded-lg overflow-hidden border border-gray-100 shrink-0">
+                          <img 
+                            src={selectedRecord.books?.[idx]?.bookId?.coverImage || "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&q=80&w=200"} 
+                            className="w-full h-full object-cover" 
+                            alt="" 
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h5 className="text-[13px] font-black text-gray-900 truncate mb-1" title={b.title}>{b.title}</h5>
+                          
+                          <div className="flex flex-wrap gap-1.5 mt-2">
+                            {[
+                              { id: 'đã trả', label: 'Tốt', color: 'emerald' },
+                              { id: 'đã trả (vi phạm)', label: 'Hỏng nhẹ', color: 'orange' },
+                              { id: 'hư hỏng nặng', label: 'Hỏng nặng', color: 'rose' },
+                              { id: 'làm mất', label: 'Mất sách', color: 'slate' }
+                            ].map(st => (
+                              <button
+                                key={st.id}
+                                type="button"
+                                onClick={() => {
+                                  const newBooks = [...returnData.books];
+                                  newBooks[idx].status = st.id;
+                                  setReturnData({ ...returnData, books: newBooks });
+                                }}
+                                className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-tight transition-all border-2 ${
+                                  b.status === st.id 
+                                    ? `bg-${st.color}-500 border-${st.color}-500 text-white shadow-lg shadow-${st.color}-500/20` 
+                                    : `bg-white border-gray-50 text-gray-400 hover:border-gray-100 hover:text-gray-600`
+                                }`}
+                              >
+                                {st.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Detail inputs for specific book violation */}
+                      {b.status !== 'đã trả' && (
+                        <div className="mt-4 pt-4 border-t border-gray-50 grid grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                           <div className="space-y-1">
+                              <label className="text-[9px] font-black text-gray-400 uppercase ml-1">Chi tiết lỗi</label>
+                              <input 
+                                type="text"
+                                placeholder="Lý do chi tiết..."
+                                className="w-full px-3 py-2 bg-gray-50/50 border border-gray-100 rounded-xl text-xs font-bold outline-none focus:border-primary/50"
+                                value={b.reason}
+                                onChange={(e) => {
+                                  const newBooks = [...returnData.books];
+                                  newBooks[idx].reason = e.target.value;
+                                  setReturnData({ ...returnData, books: newBooks });
+                                }}
+                              />
+                           </div>
+                           <div className="space-y-1">
+                              <label className="text-[9px] font-black text-gray-400 uppercase ml-1">Phí bồi thường</label>
+                              <input 
+                                type="number"
+                                placeholder="0"
+                                className="w-full px-3 py-2 bg-gray-50/50 border border-gray-100 rounded-xl text-xs font-black text-rose-500 outline-none focus:border-primary/50"
+                                value={b.violationAmount}
+                                onChange={(e) => {
+                                  const newBooks = [...returnData.books];
+                                  newBooks[idx].violationAmount = parseInt(e.target.value) || 0;
+                                  setReturnData({ ...returnData, books: newBooks });
+                                }}
+                              />
+                           </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* General Summary & Auto-calculated Fees */}
+              <div className="space-y-6">
+                <div className="bg-slate-900 rounded-[2rem] p-8 text-white shadow-xl relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl"></div>
+                  
+                  <div className="relative z-10 flex items-center justify-between mb-6">
+                    <h5 className="text-sm font-black uppercase tracking-[0.2em] opacity-80">Tổng kết xử lý</h5>
+                    <div className="flex items-center gap-2 bg-white/10 px-4 py-1.5 rounded-full border border-white/10">
+                       <ShieldCheck size={14} className="text-emerald-400" />
+                       <span className="text-[10px] font-black uppercase">Quy chuẩn LMS</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 relative z-10">
+                    <div className="flex justify-between items-center text-sm font-bold">
+                       <span className="opacity-60 font-medium">Phí quá hạn (Tạm tính)</span>
+                       <span className={returnData.violationAmount > 0 ? "text-rose-400" : "text-emerald-400"}>
+                          {returnData.violationAmount.toLocaleString()}đ
+                       </span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm font-bold">
+                       <span className="opacity-60 font-medium">Phí hư hại / Bồi thường</span>
+                       <span className="text-emerald-400">
+                          {returnData.books.reduce((sum, b) => sum + (b.violationAmount || 0), 0).toLocaleString()}đ
+                       </span>
+                    </div>
+                    
+                    <div className="h-px bg-white/10 my-4"></div>
+                    
+                    <div className="flex justify-between items-center">
+                       <div>
+                          <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-1">Tổng cộng phí vi phạm</p>
+                          <p className="text-3xl font-black tracking-tight">
+                            {(returnData.violationAmount + returnData.books.reduce((sum, b) => sum + (b.violationAmount || 0), 0)).toLocaleString()}đ
+                          </p>
+                       </div>
+                       <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center border border-white/10">
+                          <CreditCard size={28} />
+                       </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-[11px] font-black text-gray-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                    <FileText size={14} /> Ghi chú nghiệp vụ (Lưu trữ nội bộ)
+                  </label>
                   <textarea
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all font-medium text-sm min-h-[100px] resize-none"
-                    placeholder="Mô tả sơ lược về tình trạng tài liệu khi thu hồi..."
+                    className="w-full px-5 py-4 bg-gray-50 border border-gray-100 rounded-3xl focus:ring-4 focus:ring-primary/5 focus:border-primary/30 outline-none transition-all font-bold text-sm min-h-[100px] resize-none placeholder:text-gray-300"
+                    placeholder="Mô tả sự việc nếu có tranh chấp hoặc xử lý đặc biệt..."
                     value={returnData.notes}
                     onChange={(e) => setReturnData({ ...returnData, notes: e.target.value })}
                   ></textarea>
                 </div>
-
-                <div className={`p-5 rounded-[2rem] border transition-all ${returnData.hasViolation ? "bg-red-50/50 border-red-100 shadow-inner" : "bg-gray-50 border-gray-100"}`}>
-                  <label className="flex items-center gap-3 cursor-pointer select-none">
-                    <div className="relative">
-                      <input
-                        type="checkbox"
-                        className="sr-only peer"
-                        checked={returnData.hasViolation}
-                        onChange={(e) => setReturnData({ ...returnData, hasViolation: e.target.checked, status: e.target.checked ? "vi phạm" : "đã trả" })}
-                      />
-                      <div className="w-12 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-500"></div>
-                    </div>
-                    <span className={`text-sm font-black uppercase tracking-wider ${returnData.hasViolation ? "text-red-600" : "text-gray-500"}`}>
-                      {returnData.hasViolation ? "Ghi nhận vi phạm" : "Trả sách bình thường"}
-                    </span>
-                  </label>
-
-                  {returnData.hasViolation && (
-                    <div className="mt-6 space-y-4 animate-in slide-in-from-top-4 duration-300">
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-red-700 ml-1 uppercase tracking-widest">Lý do vi phạm</label>
-                        <input
-                          type="text"
-                          placeholder="Ví dụ: Làm mất trang, sách bị ướt..."
-                          className="w-full px-4 py-3 bg-white border border-red-200 rounded-xl focus:ring-2 focus:ring-red-500/20 focus:border-red-500 outline-none transition-all font-bold text-sm text-gray-800"
-                          value={returnData.violationReason}
-                          onChange={(e) => setReturnData({ ...returnData, violationReason: e.target.value })}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-red-700 ml-1 uppercase tracking-widest">Tổng phí phạt (VND)</label>
-                        <input
-                          type="number"
-                          placeholder="Nhập số tiền..."
-                          className="w-full px-4 py-3 bg-white border border-red-200 rounded-xl focus:ring-2 focus:ring-red-500/20 focus:border-red-500 outline-none transition-all font-black text-xl text-red-600"
-                          value={returnData.violationAmount}
-                          onChange={(e) => setReturnData({ ...returnData, violationAmount: parseInt(e.target.value) || 0 })}
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
               </div>
 
-              <div className="flex gap-3 pt-2">
-                <button type="submit" className="flex-1 bg-primary text-white py-3 rounded-xl font-bold hover:bg-primary-dark transition-all shadow-lg shadow-primary/20">
-                  Xử lý trả sách
-                </button>
-                <button type="button" onClick={() => setShowReturnModal(false)} className="px-6 py-3 bg-white border border-gray-200 text-gray-600 rounded-xl font-bold hover:bg-gray-100 transition-all">
-                  Hủy
-                </button>
+              {/* Disclaimer */}
+              <div className="flex items-start gap-3 p-4 bg-blue-50/50 rounded-2xl border border-blue-100/50">
+                 <Info size={16} className="text-blue-500 shrink-0 mt-0.5" />
+                 <p className="text-[10px] font-bold text-blue-700/80 leading-relaxed">
+                   Bằng việc nhấn "Lưu kết quả & Đóng hồ sơ", hệ thống sẽ tự động cập nhật kho, gửi thông báo thay đổi trạng thái cho độc giả và tạo hóa đơn phí phạt nếu có. Thao tác này không thể hoàn tác.
+                 </p>
               </div>
             </form>
+
+            {/* Modal Footer */}
+            <div className="p-8 border-t border-gray-50 bg-gray-50/30 shrink-0">
+               <div className="flex gap-4">
+                  <button 
+                    type="button" 
+                    onClick={() => setShowReturnModal(false)} 
+                    className="flex-1 px-6 py-4 bg-white border border-gray-200 text-gray-500 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-gray-50 hover:text-gray-700 transition-all active:scale-95"
+                  >
+                    Hủy bỏ
+                  </button>
+                  <button 
+                    onClick={handleReturnSubmit}
+                    className="flex-[2] bg-gray-900 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-gray-200 active:scale-95 flex items-center justify-center gap-2"
+                  >
+                    Lưu kết quả & Đóng hồ sơ
+                  </button>
+               </div>
+            </div>
           </div>
         </div>
       )}
@@ -869,9 +788,13 @@ const BorrowsPage = () => {
               </div>
 
               <div className="w-full bg-gray-50 rounded-2xl p-6 space-y-4">
-                <div className="flex justify-between items-center text-sm">
+                <div className="flex justify-between items-start text-sm">
                   <span className="font-medium text-gray-500">Tài liệu:</span>
-                  <span className="font-bold text-gray-900 truncate max-w-[200px]">{returnResult.record?.bookId?.title || "Tài liệu"}</span>
+                  <div className="text-right">
+                    {(returnResult.record?.books || []).map((b, i) => (
+                      <p key={i} className="font-bold text-gray-900 truncate max-w-[200px]">{b.bookId?.title || "Tài liệu"}</p>
+                    ))}
+                  </div>
                 </div>
                 <div className="flex justify-between items-center text-sm">
                   <span className="font-medium text-gray-500">Người mượn:</span>

@@ -214,11 +214,17 @@ class BorrowController {
    */
   returnBook = asyncHandler(async (req, res) => {
     const { id } = req.params;
-    const { status, notes, violationAmount, violationReason } = req.body;
+    const { status, notes, violationAmount, violationReason, books } = req.body;
 
-    const result = await this.borrowService.returnBook(id, req.user.id, { status, notes, violationAmount, violationReason });
+    const result = await this.borrowService.returnBook(id, req.user.id, { 
+      status, 
+      notes, 
+      violationAmount, 
+      violationReason,
+      books 
+    });
 
-    let message = "Book returned successfully";
+    let message = "Trả sách thành công";
     if (result.violation) {
       message += `. A violation fee of ${result.violation.amount} VND was recorded due to ${result.violation.reason}.`;
     }
@@ -294,19 +300,29 @@ class BorrowController {
 
     const filter = {};
     if (status && status !== 'all') {
-      if (status === 'overdue') {
-        const now = new Date();
+      const now = new Date();
+      const statusList = status.split(',');
+      
+      const hasOverdue = statusList.some(s => s === 'overdue' || s === 'quá hạn');
+      const hasBorrowed = statusList.some(s => s === 'borrowed' || s === 'đang mượn');
+
+      if (hasOverdue && !hasBorrowed) {
+        // Specifically filtering for OVERDUE items
+        // Includes items explicitly marked 'overdue' OR 'borrowed' but passed due date
         filter.$or = [
-          { status: 'overdue' },
+          { status: { $in: ['overdue', 'quá hạn'] } },
           { 
-            status: 'borrowed',
+            status: { $in: ['borrowed', 'đang mượn'] },
             dueDate: { $lt: now }
           }
         ];
-      } else if (status.includes(',')) {
-        filter.status = { $in: status.split(',') };
+      } else if (hasBorrowed && !hasOverdue) {
+        // Specifically filtering for ACTIVE borrows (NOT overdue)
+        filter.status = { $in: ['borrowed', 'đang mượn'] };
+        filter.dueDate = { $gte: now };
       } else {
-        filter.status = status;
+        // All other statuses (pending, returned, etc.) or combined ones
+        filter.status = { $in: statusList };
       }
     }
     if (readerId) filter.readerId = readerId;

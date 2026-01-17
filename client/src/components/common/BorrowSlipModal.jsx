@@ -99,9 +99,13 @@ const BorrowSlipModal = ({ isOpen, onClose, borrow }) => {
               </h4>
               <div className="space-y-3">
                 {(() => {
-                   const items = borrow.books || (borrow.bookId ? [{ bookId: borrow.bookId }] : []);
+                   const items = borrow.books || (borrow.bookId ? [{ bookId: borrow.bookId, status: borrow.status }] : []);
                    const grouped = items.reduce((acc, curr) => {
-                     const exists = acc.find(b => b.bookId?._id === curr.bookId?._id);
+                     // Nhóm theo cả bookId và trạng thái (để tách biệt những cuốn bị mất/hỏng trong cùng đợt)
+                     const exists = acc.find(b => 
+                        (b.bookId?._id || b.bookId) === (curr.bookId?._id || curr.bookId) && 
+                        b.status === curr.status
+                     );
                      if (exists) exists.quantity += 1;
                      else acc.push({ ...curr, quantity: 1 });
                      return acc;
@@ -124,7 +128,14 @@ const BorrowSlipModal = ({ isOpen, onClose, borrow }) => {
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="font-black text-neutral-dark text-xs line-clamp-2 leading-tight mb-1">{bItem.bookId?.title}</p>
+                        <div className="flex justify-between items-start gap-2">
+                           <p className="font-black text-neutral-dark text-xs line-clamp-2 leading-tight mb-1">{bItem.bookId?.title}</p>
+                           {bItem.status && bItem.status !== borrow.status && (
+                             <span className="shrink-0 px-2 py-0.5 rounded bg-amber-50 text-amber-600 text-[8px] font-black border border-amber-100 uppercase">
+                               {bItem.status}
+                             </span>
+                           )}
+                        </div>
                         <p className="text-[10px] text-gray-400 font-bold mb-2">{bItem.bookId?.author}</p>
                         <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-neutral-light rounded text-[9px] font-bold text-gray-400">
                           <Hash size={9} /> {bItem.bookId?.isbn || 'N/A'}

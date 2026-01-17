@@ -86,6 +86,49 @@ class BorrowRepository extends BaseRepository {
 
     return result;
   }
+
+  async findAllWithPriority(filter = {}, options = {}) {
+    const { page = 1, limit = 10, populate = [] } = options;
+    const skip = (page - 1) * parseInt(limit);
+
+    const total = await this.model.countDocuments(filter);
+
+    const results = await this.model.aggregate([
+      { $match: filter },
+      {
+        $addFields: {
+          sortPriority: {
+            $switch: {
+              branches: [
+                { case: { $in: ["$status", ["pending", "đang chờ"]] }, then: 1 },
+                { case: { $in: ["$status", ["overdue", "quá hạn"]] }, then: 2 },
+                { case: { $in: ["$status", ["approved", "đã duyệt"]] }, then: 3 },
+                { case: { $in: ["$status", ["borrowed", "đang mượn"]] }, then: 4 }
+              ],
+              default: 5
+            }
+          }
+        }
+      },
+      { $sort: { sortPriority: 1, createdAt: -1 } },
+      { $skip: skip },
+      { $limit: parseInt(limit) }
+    ]);
+
+    const populated = await this.model.populate(results, populate);
+
+    return {
+      data: populated,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        totalItems: total,
+        pages: Math.ceil(total / limit),
+        totalPages: Math.ceil(total / limit)
+      }
+    };
+  }
 }
 
 module.exports = BorrowRepository;

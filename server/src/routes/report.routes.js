@@ -8,6 +8,7 @@ module.exports = () => {
   router.use(authorize('admin', 'librarian'));
   router.get('/', reportController.getLibraryStats);
   router.get('/borrowed-books', reportController.getBorrowedBooksStats);
+  router.get('/inventory-category', reportController.getInventoryByCategory);
   router.get('/top-readers', reportController.getTopReaders);
   router.get('/top-books', reportController.getTopBooks);
   router.get('/activities', reportController.getRecentActivities);

@@ -248,9 +248,12 @@ const ReaderHistoryPage = () => {
                 ))
               ) : filteredHistory.length > 0 ? (
                 filteredHistory.map((item) => {
-                  // Nhóm các sách trùng nhau trong cùng một phiếu mượn
+                  // Nhóm các sách trùng nhau trong cùng một phiếu mượn (và cùng trạng thái)
                   const groupedBooks = (item.books || []).reduce((acc, curr) => {
-                    const existingBook = acc.find(b => b.bookId?._id === curr.bookId?._id);
+                    const existingBook = acc.find(b => 
+                      (b.bookId?._id || b.bookId) === (curr.bookId?._id || curr.bookId) && 
+                      b.status === curr.status
+                    );
                     if (existingBook) {
                       existingBook.quantity += 1;
                     } else {
@@ -264,24 +267,31 @@ const ReaderHistoryPage = () => {
                       <td className="px-8 py-6 align-top">
                         <div className="space-y-4">
                           {groupedBooks.map((bItem, idx) => (
-                             <Link key={idx} to={`/books/${bItem.bookId?._id}`} className="flex items-center gap-4 hover:opacity-80 transition-opacity">
-                              <div className="w-10 h-14 bg-white rounded-lg flex items-center justify-center text-gray-200 shadow-sm border border-gray-100 shrink-0 relative overflow-hidden">
-                                {bItem.bookId?.coverImage ? (
-                                  <img src={bItem.bookId.coverImage} className="w-full h-full object-cover" />
-                                ) : (
-                                  <Book size={18} strokeWidth={1.5} />
-                                )}
-                                {bItem.quantity > 1 && (
-                                  <div className="absolute top-0 right-0 bg-primary text-white text-[9px] font-black px-1.5 py-0.5 rounded-bl-lg shadow-sm">
-                                    x{bItem.quantity}
-                                  </div>
-                                )}
-                              </div>
-                              <div className="min-w-0">
-                                  <p className="font-bold text-gray-900 text-xs truncate max-w-[200px]">{bItem.bookId?.title || "N/A"}</p>
-                                  <p className="text-[9px] text-gray-400 font-bold mt-0.5 uppercase tracking-wider">{bItem.bookId?.author}</p>
-                              </div>
-                             </Link>
+                             <div key={idx}>
+                               <Link to={`/books/${bItem.bookId?._id}`} className="flex items-center gap-4 hover:opacity-80 transition-opacity">
+                                <div className="w-10 h-14 bg-white rounded-lg flex items-center justify-center text-gray-200 shadow-sm border border-gray-100 shrink-0 relative overflow-hidden">
+                                  {bItem.bookId?.coverImage ? (
+                                    <img src={bItem.bookId.coverImage} className="w-full h-full object-cover" />
+                                  ) : (
+                                    <Book size={18} strokeWidth={1.5} />
+                                  )}
+                                  {bItem.quantity > 1 && (
+                                    <div className="absolute top-0 right-0 bg-primary text-white text-[9px] font-black px-1.5 py-0.5 rounded-bl-lg shadow-sm">
+                                      x{bItem.quantity}
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="font-bold text-gray-900 text-xs truncate max-w-[200px]">{bItem.bookId?.title || "N/A"}</p>
+                                    <p className="text-[9px] text-gray-400 font-bold mt-0.5 uppercase tracking-wider">{bItem.bookId?.author}</p>
+                                    {bItem.status && bItem.status !== item.status && (
+                                      <span className="inline-block mt-1 px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 text-[8px] font-black border border-amber-100 uppercase">
+                                        {bItem.status}
+                                      </span>
+                                    )}
+                                </div>
+                               </Link>
+                             </div>
                           ))}
                           <p className="text-[10px] text-gray-300 font-bold mt-2 uppercase tracking-wider border-t border-gray-50 pt-2 shadow-sm w-fit">Mã: #{item._id.slice(-8).toUpperCase()}</p>
                         </div>
@@ -314,7 +324,7 @@ const ReaderHistoryPage = () => {
                           Tổng số: {item.books?.length || 1} cuốn
                         </p>
                         {item.violation && item.violation.amount > 0 && (
-                          <div className="flex flex-col items-center gap-0.5 animate-in fade-in slide-in-from-top-1 duration-300">
+                          <div className="flex flex-col items-center gap-0.5 animate-in fade-in slide-in-from-top-1 duration-300 group/v relative">
                              <div className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-md border shadow-sm ${item.violation.isPaid ? 'text-emerald-600 bg-emerald-50 border-emerald-100' : 'text-rose-600 bg-rose-50 border-rose-100 shadow-rose-50'}`}>
                                 {item.violation.isPaid ? <CheckCircle2 size={10} strokeWidth={3} /> : <AlertCircle size={10} strokeWidth={3} />}
                                 {item.violation.amount.toLocaleString()}đ
@@ -322,6 +332,15 @@ const ReaderHistoryPage = () => {
                              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tight italic">
                                 {item.violation.isPaid ? 'Đã nộp phí' : item.violation.reason}
                              </span>
+                             
+                             {/* Tooltip description */}
+                             {item.violation.description && (
+                                <div className="absolute bottom-full mb-2 hidden group-hover/v:block w-48 p-2 bg-slate-900 text-white text-[10px] rounded-lg shadow-xl z-50 text-center leading-relaxed animate-in zoom-in duration-200">
+                                   <p className="font-bold border-b border-white/10 pb-1 mb-1 text-primary italic">Chi tiết vi phạm</p>
+                                   {item.violation.description}
+                                   <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-900"></div>
+                                </div>
+                             )}
                           </div>
                         )}
                       </div>

@@ -1,15 +1,21 @@
 const BaseService = require('../utils/BaseService');
 
 class ViolationService extends BaseService {
-  constructor(repository, readerService) {
+  constructor(repository, readerService, notificationService) {
     super(repository);
     this.readerService = readerService;
+    this.notificationService = notificationService;
   }
 
   async createViolation(data) {
     // Ensure amount is a valid number
     if (isNaN(data.amount) || data.amount < 0) {
       data.amount = 0;
+    }
+
+    // Ensure reason is not empty
+    if (!data.reason || data.reason.trim() === '') {
+      data.reason = 'Vi phạm quy định thư viện';
     }
     
     // Default status if not provided
@@ -20,16 +26,24 @@ class ViolationService extends BaseService {
     // Update reader's total unpaid violations
     if (data.amount > 0 && (data.status === 'unpaid' || data.status === 'chưa thanh toán')) {
       await this.readerService.updateUnpaidViolations(data.readerId, data.amount);
+
+      // Gửi thông báo cho độc giả về phí phạt mới
+      if (this.notificationService) {
+        await this.notificationService.notifyViolation(data.readerId, violation._id, data.amount, data.reason);
+      }
     }
     
     return violation;
   }
 
   async payViolation(violationId, staffId) {
+    if (!staffId) throw new Error("ID Thủ thư là bắt buộc để thực hiện thu phí.");
+
     const violation = await this.repository.findById(violationId);
-    if (!violation) throw new Error('Violation record not found');
+    if (!violation) throw new Error('Không tìm thấy bản ghi vi phạm.');
+    
     if (violation.status === 'paid' || violation.status === 'đã thanh toán') {
-      throw new Error('Violation already paid');
+      throw new Error('Khoản phí này đã được thanh toán trước đó.');
     }
 
     const updatedViolation = await this.repository.update(violationId, {
@@ -37,6 +51,20 @@ class ViolationService extends BaseService {
       paidAt: new Date(),
       staffId
     });
+
+    // Reduce reader's total unpaid violations
+    const reader = await this.readerService.updateUnpaidViolations(violation.readerId, -violation.amount);
+
+    // Gửi thông báo xác nhận thanh toán
+    if (this.notificationService) {
+      await this.notificationService.notifyViolation(
+        violation.readerId, 
+        violationId, 
+        violation.amount, 
+        violation.reason, 
+        true // isPaymentConfirmed
+      );
+    }
 
     // Sync with Borrow record if exists
     const borrowId = violation.borrowId?._id || violation.borrowId;
@@ -50,15 +78,54 @@ class ViolationService extends BaseService {
             'violation.paidAt': new Date()
           }
         });
+        
+        // KIỂM TRA TỰ ĐỘNG MỞ KHÓA TÀI KHOẢN
+        if (reader && reader.status === 'suspended' && reader.unpaidViolations <= 20000) {
+           // Kiểm tra xem còn sách nào quá hạn không
+           const overdueCount = await BorrowModel.countDocuments({
+              readerId: violation.readerId,
+              status: { $in: ["đang mượn", "borrowed", "quá hạn", "overdue"] },
+              dueDate: { $lt: new Date() }
+           });
+
+           if (overdueCount === 0) {
+              await this.readerService.repository.update(violation.readerId, {
+                status: 'active',
+                notes: (reader.notes || "") + " | Tài khoản tự động kích hoạt lại sau khi thanh toán phí phạt."
+              });
+           }
+        }
       } catch (syncError) {
-        console.error('Failed to sync payment to Borrow record:', syncError);
+        console.error('Failed to sync payment and check status:', syncError);
       }
     }
 
-    // Reduce reader's total unpaid violations
-    await this.readerService.updateUnpaidViolations(violation.readerId, -violation.amount);
-
     return updatedViolation;
+  }
+
+  /**
+   * Thanh toán toàn bộ nợ cho độc giả
+   */
+  async payAllViolations(readerId, staffId) {
+    if (!staffId) throw new Error("ID Thủ thư là bắt buộc.");
+    
+    const unpaidList = await this.repository.findUnpaidByReader(readerId);
+    if (unpaidList.length === 0) throw new Error("Độc giả không có khoản nợ nào cần thanh toán.");
+
+    const results = [];
+    let totalPaid = 0;
+
+    for (const v of unpaidList) {
+      const updated = await this.payViolation(v._id, staffId);
+      results.push(updated);
+      totalPaid += v.amount;
+    }
+
+    return {
+      count: results.length,
+      totalAmount: totalPaid,
+      readerId
+    };
   }
 
   async getReaderViolations(readerId) {

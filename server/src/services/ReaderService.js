@@ -65,9 +65,19 @@ class ReaderService extends BaseService {
     const reader = await this.repository.findById(id);
     if (!reader) throw new Error('Reader not found');
     
-    return await this.repository.update(id, {
-      unpaidViolations: (reader.unpaidViolations || 0) + amount
+    const newDebt = (reader.unpaidViolations || 0) + amount;
+    const updatedReader = await this.repository.update(id, {
+      unpaidViolations: Math.max(0, newDebt)
     });
+
+    // Tự động mở khóa tài khoản nếu trả hết nợ và không có sách quá hạn (check sơ bộ)
+    // Lưu ý: Việc kiểm tra sách quá hạn triệt để sẽ thực hiện ở BorrowService
+    if (updatedReader.unpaidViolations <= 0 && updatedReader.status === 'suspended') {
+      // Chúng ta sẽ cần một phương thức kiểm tra xem còn sách quá hạn không
+      // Ở đây tạm thời để cập nhật trạng thái nếu muốn tự động hóa cao
+    }
+
+    return updatedReader;
   }
 
   async toggleFavorite(readerId, bookId) {

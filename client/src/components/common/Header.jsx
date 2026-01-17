@@ -3,7 +3,8 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useBasket } from "../../context/BasketContext";
 import borrowService from "../../services/borrowService";
-import { Library, LogIn, LogOut, Menu, X, Bell, LayoutDashboard, Book, History, Search, User, Home, Heart, AlertCircle, Clock, CheckCircle2, ShoppingBag } from "lucide-react";
+import notificationService from "../../services/notificationService";
+import { Library, LogIn, LogOut, Menu, X, Bell, LayoutDashboard, Book, History, Search, User, Home, Heart, AlertCircle, Clock, CheckCircle2, ShoppingBag, Eye } from "lucide-react";
 
 const Header = () => {
   const { user, isAuthenticated, logout } = useAuth();
@@ -13,6 +14,7 @@ const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const selectedItems = Array.isArray(basket) ? basket.filter(item => item.selected) : [];
   const basketCount = selectedItems.reduce((sum, item) => sum + item.quantity, 0);
@@ -20,6 +22,9 @@ const Header = () => {
   useEffect(() => {
     if (isAuthenticated) {
       loadNotifications();
+      // Periodically refresh notifications every 1 minute
+      const interval = setInterval(loadNotifications, 60000);
+      return () => clearInterval(interval);
     }
   }, [isAuthenticated, user?.role]);
 
@@ -28,34 +33,42 @@ const Header = () => {
     const role = user?.role?.toLowerCase();
     
     if (role === 'reader') {
-      if (user?.unpaidViolations > 0) {
-        alerts.push({
-          id: 'violation',
-          type: 'error',
-          title: 'Vi phạm chưa xử lý',
-          description: `Bạn còn khoản nợ ${user.unpaidViolations.toLocaleString()}đ`,
-          time: 'Cần xử lý ngay',
-          icon: <AlertCircle size={16} className="text-rose-500" />
-        });
+      try {
+        // Fetch real notifications from backend
+        const res = await notificationService.getMyNotifications({ limit: 5 });
+        if (res.success && res.data.data) {
+          const backendNotifs = res.data.data.map(n => ({
+            id: n._id,
+            type: n.type === 'violation' ? 'error' : n.type === 'borrow' ? 'warning' : 'info',
+            title: n.title,
+            description: n.message,
+            time: new Date(n.createdAt).toLocaleDateString('vi-VN'),
+            isRead: n.isRead,
+            icon: n.type === 'violation' ? <AlertCircle size={16} className="text-rose-500" /> : 
+                  n.type === 'borrow' ? <Clock size={16} className="text-amber-500" /> :
+                  <CheckCircle2 size={16} className="text-emerald-500" />
+          }));
+          alerts.push(...backendNotifs);
+        }
+
+        // Unread count
+        const countRes = await notificationService.getUnreadCount();
+        if (countRes.success) {
+          setUnreadCount(countRes.data.unreadCount);
+        }
+      } catch (err) {
+        console.error("Failed to load backend notifications", err);
       }
-      if (user?.status === 'suspended') {
-        alerts.push({
-          id: 'suspended',
+
+      // Add critical system alerts if not in backend notifs or keep them always visible
+      if (user?.unpaidViolations > 20000) {
+        alerts.unshift({
+          id: 'violation-critical',
           type: 'error',
-          title: 'Tài khoản bị đình chỉ',
-          description: 'Hạn chế quyền mượn sách',
-          time: 'Liên hệ thủ thư',
-          icon: <X size={16} className="text-rose-600" />
-        });
-      }
-      if (alerts.length === 0) {
-        alerts.push({
-          id: 'welcome',
-          type: 'info',
-          title: 'Chào mừng trở lại',
-          description: 'Chúc bạn có thời gian đọc sách vui vẻ',
-          time: 'Hôm nay',
-          icon: <CheckCircle2 size={16} className="text-emerald-500" />
+          title: 'Khoản nợ quá hạn',
+          description: `Bạn còn khoản nợ ${user.unpaidViolations.toLocaleString()}đ cần thanh toán ngay`,
+          time: 'Cảnh báo',
+          icon: <AlertCircle size={16} className="text-rose-600 font-bold" />
         });
       }
     } else if (role === 'librarian' || role === 'admin') {
@@ -170,8 +183,13 @@ const Header = () => {
                     className={`w-12 h-12 flex items-center justify-center rounded-2xl relative transition-all group ${showNotifications ? 'bg-primary/10 text-primary' : 'text-slate-400 hover:text-primary hover:bg-slate-50'}`}
                   >
                     <Bell size={24} />
-                    {notifications.length > 0 && (
-                      <span className="absolute top-3.5 right-3.5 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-white ring-4 ring-rose-500/10 group-hover:scale-125 transition-transform"></span>
+                    {unreadCount > 0 && (
+                      <span className="absolute top-2.5 right-2.5 min-w-[18px] h-[18px] px-1 bg-rose-500 text-white text-[10px] font-black flex items-center justify-center rounded-full border-2 border-white animate-in zoom-in duration-300">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    )}
+                    {unreadCount === 0 && notifications.length > 0 && (
+                      <span className="absolute top-3.5 right-3.5 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-white"></span>
                     )}
                   </button>
 
@@ -181,18 +199,33 @@ const Header = () => {
                       <div className="absolute right-0 mt-3 w-80 bg-white rounded-[2rem] shadow-2xl border border-gray-100 py-6 z-20 animate-in fade-in zoom-in-95 duration-200">
                         <div className="px-6 mb-4 flex items-center justify-between">
                           <h4 className="text-sm font-black text-gray-900 uppercase tracking-widest">Thông báo</h4>
-                          <span className="bg-primary/10 text-primary text-[10px] font-black px-2 py-0.5 rounded-full">{notifications.length} tin mới</span>
+                          {unreadCount > 0 && (
+                            <button 
+                              onClick={async () => {
+                                await notificationService.markAllRead();
+                                loadNotifications();
+                              }}
+                              className="text-[10px] font-bold text-primary hover:underline"
+                            >
+                              Đọc tất cả
+                            </button>
+                          )}
                         </div>
                         <div className="max-h-[320px] overflow-y-auto px-4 space-y-1">
                           {notifications.length > 0 ? (
                             notifications.map((notif) => (
                               <div 
                                 key={notif.id} 
-                                className="p-4 rounded-3xl hover:bg-gray-50 transition-all flex gap-4 items-start group border border-transparent hover:border-gray-100 cursor-pointer"
-                                onClick={() => {
-                                  if (notif.id === 'violation' || notif.id === 'suspended') navigate('/profile');
-                                  if (notif.id === 'pending-borrows') navigate('/borrows?status=pending');
-                                  if (notif.id === 'overdue-borrows') navigate('/borrows?status=overdue');
+                                className={`p-4 rounded-3xl transition-all flex gap-4 items-start group border border-transparent cursor-pointer ${notif.isRead === false ? 'bg-primary/5 hover:bg-primary/10' : 'hover:bg-gray-50'}`}
+                                onClick={async () => {
+                                  if (notif.isRead === false) {
+                                    await notificationService.markAsRead(notif.id);
+                                    loadNotifications();
+                                  }
+                                  
+                                  if (notif.id === 'violation' || notif.id === 'violation-critical') navigate('/reader/history'); // Or violation page
+                                  else if (notif.type === 'warning') navigate('/reader/history');
+                                  
                                   setShowNotifications(false);
                                 }}
                               >
@@ -204,10 +237,11 @@ const Header = () => {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                    <div className="flex justify-between items-start mb-0.5">
-                                      <p className="text-xs font-black text-gray-900 group-hover:text-primary transition-colors">{notif.title}</p>
-                                      <span className="text-[9px] text-gray-300 font-black uppercase tracking-tighter">{notif.time}</span>
+                                      <p className={`text-xs font-black transition-colors ${notif.isRead === false ? 'text-primary' : 'text-gray-900'}`}>{notif.title}</p>
+                                      {notif.isRead === false && <span className="w-1.5 h-1.5 bg-primary rounded-full"></span>}
                                    </div>
-                                  <p className="text-[11px] text-gray-500 font-bold leading-relaxed line-clamp-2">{notif.description}</p>
+                                  <p className={`text-[11px] font-bold leading-relaxed line-clamp-2 ${notif.isRead === false ? 'text-gray-900' : 'text-gray-500'}`}>{notif.description}</p>
+                                  <div className="mt-1 text-[9px] text-gray-300 font-black uppercase tracking-tighter">{notif.time}</div>
                                 </div>
                               </div>
                             ))
@@ -227,7 +261,7 @@ const Header = () => {
                              }}
                              className="w-full py-3.5 bg-gray-50 rounded-2xl text-[10px] font-black text-gray-400 uppercase tracking-widest hover:bg-primary hover:text-white transition-all shadow-sm"
                           >
-                             Xem tất cả thông báo
+                             Xem tất cả lịch sử
                           </button>
                         </div>
                       </div>

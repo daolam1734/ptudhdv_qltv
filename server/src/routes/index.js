@@ -9,7 +9,8 @@ module.exports = (controllers) => {
     readerController,
     staffController,
     violationController,
-    categoryController
+    categoryController,
+    notificationController
   } = controllers;
 
   // Import existing route factories
@@ -21,6 +22,7 @@ module.exports = (controllers) => {
   const staffRoutes = require('./staff.routes');
   const violationRoutes = require('./violation.routes');
   const categoryRoutes = require('./category.routes');
+  const notificationRoutes = require('./notification.routes');
 
   // Register all modules
   router.use('/auth', authRoutes(authController));
@@ -31,6 +33,7 @@ module.exports = (controllers) => {
   router.use('/staff', staffRoutes(staffController));
   router.use('/violations', violationRoutes(violationController));
   router.use('/categories', categoryRoutes(categoryController));
+  router.use('/notifications', notificationRoutes(notificationController));
 
   return router;
 };

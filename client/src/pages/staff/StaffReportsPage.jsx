@@ -7,8 +7,11 @@ import {
 import {
     TrendingUp, Users, BookOpen, AlertCircle, Clock,
     CheckCircle2, FileText, Download, Calendar, ArrowUpRight,
-    ArrowDownRight, MoreVertical, Search, Filter, RefreshCcw
+    ArrowDownRight, MoreVertical, Search, Filter, RefreshCcw,
+    ChevronDown, Layers, Table, FileJson, X, ShieldAlert,
+    BookMarked, History, Info
 } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 
 const StaffReportsPage = () => {
     const [stats, setStats] = useState(null);
@@ -17,10 +20,125 @@ const StaffReportsPage = () => {
     const [trends, setTrends] = useState([]);
     const [loading, setLoading] = useState(true);
     const [timeRange, setTimeRange] = useState('30days');
+    const [showExportModal, setShowExportModal] = useState(false);
+    const [exporting, setExporting] = useState(false);
 
     useEffect(() => {
         fetchReports();
     }, [timeRange]);
+
+    const downloadCSV = (data, filename) => {
+        if (!data || !data.length || (data.length === 1 && !data[0])) {
+            toast.error("Không có dữ liệu để xuất");
+            return;
+        }
+        
+        // Helper to flatten objects
+        const flattenObject = (obj, prefix = '') => {
+            if (!obj || typeof obj !== 'object') return {};
+            let flat = {};
+            for (let key in obj) {
+                const value = obj[key];
+                const newKey = prefix + key;
+
+                if (value === null || value === undefined) {
+                    flat[newKey] = '';
+                } else if (typeof value === 'object' && !Array.isArray(value)) {
+                    // Handle populated fields (must have name or fullName or username)
+                    if (value.fullName || value.name || value.username || value.title) {
+                        flat[newKey] = value.fullName || value.name || value.username || value.title;
+                    } else {
+                        // Regular nested object - recurse
+                        const nested = flattenObject(value, `${newKey}_`);
+                        flat = { ...flat, ...nested };
+                    }
+                } else if (Array.isArray(value)) {
+                    if (key === 'books' && value.length > 0) {
+                        // Special handling for borrow books array
+                        flat[newKey] = value.map(b => b.bookId?.title || 'N/A').join('; ');
+                    } else {
+                        flat[newKey] = `[${value.length} items]`;
+                    }
+                } else {
+                    flat[newKey] = value;
+                }
+            }
+            return flat;
+        };
+
+        const processedData = data
+            .map(item => flattenObject(item))
+            .filter(item => Object.keys(item).length > 0);
+
+        if (processedData.length === 0) {
+            toast.error("Dữ liệu báo cáo trống");
+            return;
+        }
+
+        // Get all unique headers from all rows
+        const headersSet = new Set();
+        processedData.forEach(row => {
+            Object.keys(row).forEach(header => headersSet.add(header));
+        });
+        const headers = Array.from(headersSet);
+
+        const csvRows = [headers.join(',')];
+        
+        for (const row of processedData) {
+            const values = headers.map(header => {
+                const val = row[header] === undefined || row[header] === null ? '' : row[header];
+                // Escape quotes and remove newlines for CSV safety
+                return `"${String(val).replace(/"/g, '""').replace(/\r?\n|\r/g, ' ')}"`;
+            });
+            csvRows.push(values.join(','));
+        }
+        
+        const csvString = "\uFEFF" + csvRows.join('\n');
+        const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${filename}_${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
+
+    const handleExport = async (type) => {
+        // Map frontend IDs to backend expected types
+        const typeMap = {
+            'borrowing': 'borrows',
+            'inventory': 'books',
+            'overdue': 'overdue',
+            'violation': 'violations',
+            'summary': 'summary'
+        };
+        const backendType = typeMap[type] || type;
+
+        try {
+            setExporting(true);
+            const res = await reportService.exportReport(backendType);
+            
+            // Generate file
+            const filename = `Bao_cao_${type}`;
+            
+            // If it's a summary, we might need to handle it differently 
+            // but for simplicity we'll pass the data array
+            const dataToExport = Array.isArray(res.data) ? res.data : [res.data];
+            downloadCSV(dataToExport, filename);
+            
+            toast.success(`Đã xuất báo cáo "${type.toUpperCase()}" thành công!`, {
+                icon: '📊'
+            });
+            
+            setShowExportModal(false);
+        } catch (error) {
+            console.error('Export failed:', error);
+            toast.error('Không thể xuất báo cáo. Vui lòng thử lại sau.');
+        } finally {
+        }
+    };
 
     const fetchReports = async () => {
         try {
@@ -116,8 +234,11 @@ const StaffReportsPage = () => {
                             30 ngày
                         </button>
                     </div>
-                    <button className="flex items-center gap-2 px-5 py-3 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition-all shadow-sm">
-                        <Download size={16} /> Xuất PDF
+                    <button 
+                        onClick={() => setShowExportModal(true)}
+                        className="flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-200"
+                    >
+                        <Download size={16} /> Xuất Báo cáo
                     </button>
                 </div>
             </div>
@@ -410,6 +531,116 @@ const StaffReportsPage = () => {
                     </div>
                 </div>
             </div>
+
+            {/* EXPORT CENTER MODAL */}
+            {showExportModal && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => !exporting && setShowExportModal(false)}></div>
+                    <div className="relative w-full max-w-xl bg-white rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in duration-300">
+                        {/* Modal Header */}
+                        <div className="p-8 border-b border-slate-50 flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shadow-sm">
+                                    <FileText size={24} />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-black text-slate-900">Trung tâm Xuất báo cáo</h3>
+                                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-0.5">Yêu cầu trích xuất dữ liệu vận hành</p>
+                                </div>
+                            </div>
+                            <button 
+                                onClick={() => setShowExportModal(false)}
+                                className="p-2 hover:bg-slate-50 rounded-xl transition-colors text-slate-400"
+                                disabled={exporting}
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div className="p-8 space-y-6">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                {[
+                                    { 
+                                        id: 'borrowing', 
+                                        title: 'Lưu thông & Mượn trả', 
+                                        desc: 'Dữ liệu mượn, trả và gia hạn',
+                                        icon: <History size={20} />,
+                                        color: 'indigo'
+                                    },
+                                    { 
+                                        id: 'inventory', 
+                                        title: 'Báo cáo Kho sách', 
+                                        desc: 'Hiện trạng, vị trí & danh mục',
+                                        icon: <BookMarked size={20} />,
+                                        color: 'emerald'
+                                    },
+                                    { 
+                                        id: 'overdue', 
+                                        title: 'Danh sách Quá hạn', 
+                                        desc: 'Chi tiết độc giả & tài liệu trễ',
+                                        icon: <Clock size={20} />,
+                                        color: 'rose'
+                                    },
+                                    { 
+                                        id: 'violation', 
+                                        title: 'Xử lý Vi phạm', 
+                                        desc: 'Thống kê phí phạt & bồi thường',
+                                        icon: <ShieldAlert size={20} />,
+                                        color: 'amber'
+                                    }
+                                ].map((item) => (
+                                    <button
+                                        key={item.id}
+                                        onClick={() => handleExport(item.id)}
+                                        disabled={exporting}
+                                        className="group relative p-6 bg-slate-50 border border-transparent rounded-[2rem] hover:bg-white hover:border-indigo-100 hover:shadow-xl hover:shadow-indigo-500/5 transition-all text-left overflow-hidden"
+                                    >
+                                        <div className={`w-10 h-10 bg-${item.color}-100 text-${item.color}-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
+                                            {item.icon}
+                                        </div>
+                                        <h4 className="text-sm font-black text-slate-900 group-hover:text-indigo-600 transition-colors uppercase tracking-tight">{item.title}</h4>
+                                        <p className="text-[10px] font-bold text-slate-400 mt-1 leading-relaxed">{item.desc}</p>
+                                        
+                                        <div className="absolute top-4 right-4 text-slate-200 group-hover:text-indigo-200 transition-colors">
+                                            <ArrowUpRight size={20} />
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div className="p-4 bg-slate-900 rounded-2xl flex items-center justify-between text-white">
+                                <div className="flex items-center gap-3">
+                                    <Layers className="text-indigo-400" size={18} />
+                                    <div>
+                                        <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Định dạng mặc định</p>
+                                        <p className="text-xs font-bold font-mono">XLSX / PDF (A4 Standard)</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-pulse"></div>
+                                    <span className="text-[10px] font-black uppercase">Ready for export</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="p-8 bg-slate-50 flex items-center gap-3">
+                            <Info size={16} className="text-slate-400 shrink-0" />
+                            <p className="text-[10px] font-bold text-slate-500 leading-relaxed italic">
+                                Chú ý: Dữ liệu trích xuất sẽ bao gồm thông tin cá nhân của độc giả. Vui lòng bảo mật tệp tin sau khi tải về theo quy định của thư viện.
+                            </p>
+                        </div>
+
+                        {exporting && (
+                            <div className="absolute inset-0 bg-white/80 backdrop-blur-[2px] z-50 flex flex-col items-center justify-center space-y-4">
+                                <div className="w-12 h-12 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
+                                <p className="text-sm font-black text-slate-900 uppercase tracking-widest">Đang xử lý dữ liệu...</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

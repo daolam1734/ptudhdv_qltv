@@ -13,7 +13,7 @@ module.exports = (bookController) => {
 
   router.post('/', authMiddleware, authorize('admin', 'librarian'), bookValidator, validate, bookController.createBook);
   router.put('/:id', authMiddleware, authorize('admin', 'librarian'), bookValidator, validate, bookController.updateBook);
-  router.delete('/:id', authMiddleware, authorize('admin'), bookController.deleteBook);
+  router.delete('/:id', authMiddleware, authorize('admin', 'librarian'), bookController.deleteBook);
 
   return router;
 };

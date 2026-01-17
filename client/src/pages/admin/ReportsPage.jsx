@@ -39,6 +39,7 @@ const ReportsPage = () => {
   const [activities, setActivities] = useState([]);
   const [borrowStats, setBorrowStats] = useState({ totalBorrowed: 0, byCategory: [] });
   const [trends, setTrends] = useState([]);
+  const [inventoryStats, setInventoryStats] = useState([]);
 
   useEffect(() => {
     fetchAllData();
@@ -48,13 +49,14 @@ const ReportsPage = () => {
     try {
       setLoading(true);
       const daysMap = { day: 1, week: 7, month: 30, year: 365 };
-      const [statsRes, readersRes, booksRes, activitiesRes, borrowRes, trendsRes] = await Promise.all([
+      const [statsRes, readersRes, booksRes, activitiesRes, borrowRes, trendsRes, inventoryRes] = await Promise.all([
         reportService.getLibraryStats(),
         reportService.getTopReaders({ limit: 5 }),
         reportService.getTopBooks({ limit: 5 }),
         reportService.getRecentActivities({ limit: 6 }),
         reportService.getBorrowedStats(),
-        reportService.getTrends(daysMap[period] || 30)
+        reportService.getTrends(daysMap[period] || 30),
+        reportService.getInventoryByCategory()
       ]);
 
       setStats(statsRes.data);
@@ -63,6 +65,7 @@ const ReportsPage = () => {
       setActivities(activitiesRes.data);
       setBorrowStats(borrowRes.data);
       setTrends(trendsRes.data);
+      setInventoryStats(inventoryRes.data);
     } catch (err) {
       console.error("Failed to fetch statistics", err);
       toast.error("Không thể lấy dữ liệu thống kê");
@@ -510,6 +513,80 @@ const ReportsPage = () => {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* NEW: Inventory Status by Category Section */}
+      <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm space-y-8 overflow-hidden">
+         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="space-y-1">
+               <h3 className="text-xl font-black text-gray-900 tracking-tight">Tình trạng kho tài liệu theo danh mục</h3>
+               <p className="text-xs text-gray-400 font-bold uppercase tracking-widest leading-relaxed">Phân tích chi tiết lưu lượng và hiện trạng tài liệu trong kho</p>
+            </div>
+            <div className="flex items-center gap-2 px-6 py-3 bg-gray-50 rounded-2xl border border-gray-100 italic text-gray-400 text-[10px] font-bold uppercase tracking-widest">
+               <Clock size={14} /> Cập nhật thời gian thực
+            </div>
+         </div>
+
+         <div className="overflow-x-auto -mx-8">
+            <table className="w-full text-left border-collapse min-w-[800px]">
+               <thead>
+                  <tr className="bg-gray-50/50 border-y border-gray-100">
+                     <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Danh mục tài liệu</th>
+                     <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] text-center">Số đầu sách</th>
+                     <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] text-center">Tổng bản sao</th>
+                     <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] text-center">Đang mượn</th>
+                     <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] text-center">Sẵn có</th>
+                     <th className="px-6 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] text-center">Hư hỏng/Mất</th>
+                     <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] text-right">Tỷ lệ mượn</th>
+                  </tr>
+               </thead>
+               <tbody className="divide-y divide-gray-50">
+                  {inventoryStats.map((item) => (
+                    <tr key={item._id} className="hover:bg-gray-50/30 transition-colors group">
+                       <td className="px-8 py-6">
+                          <div className="flex items-center gap-4">
+                             <div className="w-10 h-10 bg-primary/5 text-primary rounded-xl flex items-center justify-center font-black text-xs shadow-inner uppercase">
+                                {item.categoryName.substring(0, 2)}
+                             </div>
+                             <div>
+                                <p className="font-black text-gray-900 text-sm group-hover:text-primary transition-colors">{item.categoryName}</p>
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">#{item._id.slice(-6).toUpperCase()}</p>
+                             </div>
+                          </div>
+                       </td>
+                       <td className="px-6 py-6 text-center">
+                          <span className="text-sm font-bold text-gray-700">{item.titleCount}</span>
+                       </td>
+                       <td className="px-6 py-6 text-center">
+                          <span className="text-sm font-black text-gray-900">{item.totalQuantity}</span>
+                       </td>
+                       <td className="px-6 py-6 text-center">
+                          <div className="flex flex-col items-center gap-1">
+                             <span className="text-sm font-black text-indigo-600">{item.borrowedQuantity}</span>
+                             <div className="w-12 h-1 bg-gray-100 rounded-full overflow-hidden">
+                                <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${(item.borrowedQuantity/item.totalQuantity)*100}%` }}></div>
+                             </div>
+                          </div>
+                       </td>
+                       <td className="px-6 py-6 text-center">
+                          <span className="text-sm font-bold text-emerald-600 px-3 py-1 bg-emerald-50 rounded-lg">{item.availableQuantity}</span>
+                       </td>
+                       <td className="px-6 py-6 text-center">
+                          <span className={`${item.damagedQuantity + item.lostQuantity > 0 ? 'text-rose-600 font-bold' : 'text-gray-300'}`}>
+                             {item.damagedQuantity + item.lostQuantity}
+                          </span>
+                       </td>
+                       <td className="px-8 py-6 text-right">
+                          <div className="flex flex-col items-end gap-1">
+                             <span className="text-sm font-black text-gray-900">{Math.round(item.utilizationRate)}%</span>
+                             <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Hiệu suất mượn</span>
+                          </div>
+                       </td>
+                    </tr>
+                  ))}
+               </tbody>
+            </table>
+         </div>
       </div>
     </div>
   );

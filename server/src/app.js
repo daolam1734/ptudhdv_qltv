@@ -12,6 +12,7 @@ const Book = require("./models/Book");
 const Borrow = require("./models/Borrow");
 const Violation = require("./models/Violation");
 const Category = require("./models/Category");
+const Notification = require("./models/Notification");
 
 // Import Repositories
 const StaffRepository = require("./repositories/StaffRepository");
@@ -20,6 +21,7 @@ const BookRepository = require("./repositories/BookRepository");
 const BorrowRepository = require("./repositories/BorrowRepository");
 const ViolationRepository = require("./repositories/ViolationRepository");
 const CategoryRepository = require("./repositories/CategoryRepository");
+const NotificationRepository = require("./repositories/NotificationRepository");
 
 // Import Services
 const AuthService = require("./services/AuthService");
@@ -29,6 +31,7 @@ const StaffService = require("./services/StaffService");
 const BorrowService = require("./services/BorrowService");
 const ViolationService = require("./services/ViolationService");
 const CategoryService = require("./services/CategoryService");
+const NotificationService = require("./services/NotificationService");
 
 // Import Controllers
 const AuthController = require("./controllers/AuthController");
@@ -38,6 +41,7 @@ const StaffController = require("./controllers/StaffController");
 const BorrowController = require("./controllers/BorrowController");
 const ViolationController = require("./controllers/ViolationController");
 const CategoryController = require("./controllers/CategoryController");
+const NotificationController = require("./controllers/NotificationController");
 const reportController = require("./controllers/ReportController");
 
 // Import Routes
@@ -80,14 +84,16 @@ const createApp = async () => {
   const borrowRepo = new BorrowRepository(Borrow);
   const violationRepo = new ViolationRepository(Violation);
   const categoryRepo = new CategoryRepository(Category);
+  const notificationRepo = new NotificationRepository(Notification);
 
   // Initialize Services
   const authService = new AuthService(staffRepo, readerRepo);
   const bookService = new BookService(bookRepo);
   const readerService = new ReaderService(readerRepo);
   const staffService = new StaffService(staffRepo);
-  const violationService = new ViolationService(violationRepo, readerService);
-  const borrowService = new BorrowService(borrowRepo, bookService, readerService, violationService);
+  const notificationService = new NotificationService(notificationRepo);
+  const violationService = new ViolationService(violationRepo, readerService, notificationService);
+  const borrowService = new BorrowService(borrowRepo, bookService, readerService, violationService, notificationService);
   const categoryService = new CategoryService(categoryRepo);
 
   // Initialize Controllers
@@ -98,6 +104,7 @@ const createApp = async () => {
   const borrowController = new BorrowController(borrowService);
   const violationController = new ViolationController(violationService);
   const categoryController = new CategoryController(categoryService);
+  const notificationController = new NotificationController(notificationService);
 
   // Register All Routes
   app.use("/api", apiRoutes({
@@ -107,7 +114,8 @@ const createApp = async () => {
     readerController,
     staffController,
     violationController,
-    categoryController
+    categoryController,
+    notificationController
   }));
 
   // Handle 404

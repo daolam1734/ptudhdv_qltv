@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from 'react-hot-toast';
 import readerService from '../../services/readerService';
 import violationService from '../../services/violationService';
 import { 
@@ -35,7 +36,6 @@ const ViolationsPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedReader, setSelectedReader] = useState(null);
   const [payAmount, setPayAmount] = useState('');
-  const [message, setMessage] = useState({ type: '', text: '' });
 
   useEffect(() => {
     if (activeTab === 'debtors') {
@@ -76,18 +76,26 @@ const ViolationsPage = () => {
 
     try {
       const amount = parseInt(payAmount);
+      if (amount <= 0) {
+        toast.error("Số tiền thu phải lớn hơn 0");
+        return;
+      }
+
       await readerService.payViolation(selectedReader._id, amount);
-      setMessage({ type: 'success', text: `Đã thanh toán ${amount.toLocaleString()}đ cho độc giả ${selectedReader.fullName}` });
+      toast.success(`Đã thanh toán ${amount.toLocaleString()}đ cho độc giả ${selectedReader.fullName}`);
+      
       setSelectedReader(null);
       setPayAmount('');
       
       if (activeTab === 'debtors') fetchViolatedReaders();
       else fetchViolations();
-
-      setTimeout(() => setMessage({ type: '', text: '' }), 5000);
     } catch (err) {
-      setMessage({ type: 'error', text: err.response?.data?.message || 'Lỗi khi thanh toán' });
+      toast.error(err.response?.data?.message || 'Lỗi khi thanh toán');
     }
+  };
+
+  const handleQuickPay = (amount) => {
+    setPayAmount(amount.toString());
   };
 
   const getStatusBadge = (status) => {
@@ -141,15 +149,6 @@ const ViolationsPage = () => {
           </div>
         </div>
       </div>
-
-      {message.text && (
-        <div className={`p-4 rounded-xl border flex items-center gap-3 animate-in slide-in-from-top duration-300 ${
-          message.type === 'success' ? 'bg-emerald-50 border-emerald-100 text-emerald-800' : 'bg-red-50 border-red-100 text-red-800'
-        }`}>
-          {message.type === 'success' ? <CheckCircle className='text-emerald-500' size={24} /> : <ShieldAlert className='text-red-500' size={24} />}
-          <p className='font-bold text-sm tracking-tight'>{message.text}</p>
-        </div>
-      )}
 
       <div className='flex border-b border-gray-100 overflow-x-auto no-scrollbar bg-white rounded-xl px-2'>
         {[
@@ -281,8 +280,15 @@ const ViolationsPage = () => {
                                  <FileText size={12} /> Phiếu mượn: {typeof v.borrowId === 'object' ? (v.borrowId.status || 'Đang xử lý') : (v.borrowId.substring(v.borrowId.length - 8).toUpperCase())}
                               </div>
                               {v.status === 'đã thanh toán' && v.paidAt && (
-                                <div className='flex items-center gap-2 text-[10px] font-bold text-emerald-600'>
-                                   <Clock size={12} /> Đã trả lúc {new Date(v.paidAt).toLocaleDateString('vi-VN')}
+                                <div className='flex items-center gap-4'>
+                                   <div className='flex items-center gap-2 text-[10px] font-bold text-emerald-600'>
+                                      <Clock size={12} /> Đã trả lúc {new Date(v.paidAt).toLocaleDateString('vi-VN')}
+                                   </div>
+                                   {v.staffId && (
+                                      <div className='flex items-center gap-2 text-[10px] font-bold text-gray-500'>
+                                         <User size={12} /> Thu bởi: {typeof v.staffId === 'object' ? v.staffId.fullName : v.staffId}
+                                      </div>
+                                   )}
                                 </div>
                               )}
                            </div>
@@ -333,7 +339,16 @@ const ViolationsPage = () => {
                         </div>
 
                         <div className='space-y-2'>
-                            <label className='text-xs font-bold text-gray-500 uppercase tracking-wider ml-1'>Số tiền thu (VND)</label>
+                            <div className='flex justify-between items-center'>
+                                <label className='text-xs font-bold text-gray-500 uppercase tracking-wider ml-1'>Số tiền thu (VND)</label>
+                                <button 
+                                    type='button'
+                                    onClick={() => handleQuickPay(selectedReader.unpaidViolations)}
+                                    className='text-[10px] font-black text-primary hover:underline uppercase tracking-tighter'
+                                >
+                                    Thu hết dư nợ
+                                </button>
+                            </div>
                             <input 
                                 type='number'
                                 className='w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-2xl font-bold text-gray-900 tabular-nums'
@@ -342,6 +357,18 @@ const ViolationsPage = () => {
                                 onChange={(e) => setPayAmount(e.target.value)}
                                 required
                             />
+                            <div className='flex gap-2 mt-2 px-1'>
+                                {[20000, 50000, 100000].map(val => (
+                                    <button
+                                        key={val}
+                                        type='button'
+                                        onClick={() => handleQuickPay(val)}
+                                        className='flex-1 py-2 bg-gray-50 hover:bg-gray-100 border border-gray-100 rounded-lg text-[10px] font-bold text-gray-500 transition-all'
+                                    >
+                                        +{val/1000}k
+                                    </button>
+                                ))}
+                            </div>
                         </div>
 
                         <div className='space-y-3 pt-2'>

@@ -54,6 +54,59 @@ class ReportService {
     };
   }
 
+  async getInventoryByCategory() {
+    const Book = require('../models/Book');
+    const inventory = await Book.aggregate([
+      { $match: { isDeleted: { $ne: true } } },
+      {
+        $group: {
+          _id: '$categoryId',
+          titleCount: { $sum: 1 },
+          totalQuantity: { $sum: '$quantity' },
+          availableQuantity: { $sum: '$available' },
+          borrowedQuantity: { $sum: '$borrowed' },
+          lostQuantity: {
+            $sum: { $cond: [{ $eq: ['$status', 'lost'] }, 1, 0] }
+          },
+          damagedQuantity: {
+            $sum: { $cond: [{ $eq: ['$status', 'damaged'] }, 1, 0] }
+          }
+        }
+      },
+      {
+        $lookup: {
+          from: 'categories',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'categoryInfo'
+        }
+      },
+      { $unwind: '$categoryInfo' },
+      {
+        $project: {
+          _id: 1,
+          categoryName: '$categoryInfo.name',
+          titleCount: 1,
+          totalQuantity: 1,
+          availableQuantity: 1,
+          borrowedQuantity: 1,
+          lostQuantity: 1,
+          damagedQuantity: 1,
+          utilizationRate: {
+            $cond: [
+              { $gt: ['$totalQuantity', 0] },
+              { $multiply: [{ $divide: ['$borrowedQuantity', '$totalQuantity'] }, 100] },
+              0
+            ]
+          }
+        }
+      },
+      { $sort: { totalQuantity: -1 } }
+    ]);
+
+    return inventory;
+  }
+
   async getLibraryStats() {
     const Book = require('../models/Book');
     const Reader = require('../models/Reader');
@@ -195,9 +248,10 @@ class ReportService {
 
   async getTopBooks(limit = 10) {
     const topBooks = await Borrow.aggregate([
+      { $unwind: '$books' },
       {
         $group: {
-          _id: '$bookId',
+          _id: '$books.bookId',
           borrowCount: { $sum: 1 }
         }
       },
@@ -241,55 +295,61 @@ class ReportService {
       .sort({ updatedAt: -1 })
       .limit(parseInt(limit))
       .populate('readerId', 'fullName')
-      .populate('bookId', 'title')
+      .populate('books.bookId', 'title')
       .lean();
 
     return activities.map(activity => {
       let actionText = '';
       let type = 'action';
 
+      // Lấy danh sách tên sách
+      const bookTitles = activity.books?.map(b => b.bookId?.title).filter(Boolean) || [];
+      const booksDisplay = bookTitles.length > 1 
+        ? `${bookTitles[0]} và ${bookTitles.length - 1} cuốn khác` 
+        : (bookTitles[0] || "Tài liệu");
+
       switch (activity.status) {
         case 'pending':
         case 'đang chờ':
-          actionText = `Yêu cầu mượn: ${activity.bookId?.title}`;
+          actionText = `Yêu cầu mượn: ${booksDisplay}`;
           type = 'system';
           break;
         case 'borrowed':
         case 'đang mượn':
-          actionText = `Đã nhận sách: ${activity.bookId?.title}`;
+          actionText = `Đã nhận sách: ${booksDisplay}`;
           type = 'action';
           break;
         case 'approved':
         case 'đã duyệt':
-          actionText = `Yêu cầu được chấp nhận: ${activity.bookId?.title}`;
+          actionText = `Yêu cầu được chấp nhận: ${booksDisplay}`;
           type = 'system';
           break;
         case 'returned':
         case 'đã trả':
-          actionText = `Đã trả sách: ${activity.bookId?.title}`;
+          actionText = `Đã trả sách: ${booksDisplay}`;
           type = 'action';
           break;
         case 'overdue':
         case 'quá hạn':
-          actionText = `Quá hạn: ${activity.bookId?.title}`;
+          actionText = `Quá hạn: ${booksDisplay}`;
           type = 'alert';
           break;
         case 'lost':
         case 'làm mất':
-          actionText = `Mất sách: ${activity.bookId?.title}`;
+          actionText = `Mất sách: ${booksDisplay}`;
           type = 'alert';
           break;
         case 'damaged':
         case 'damaged_heavy':
         case 'hư hỏng':
         case 'hư hỏng nặng':
-          actionText = `Trả sách hỏng: ${activity.bookId?.title}`;
+          actionText = `Trả sách hỏng: ${booksDisplay}`;
           type = 'alert';
           break;
         case 'rejected':
         case 'từ chối':
         case 'đã hủy':
-          actionText = `Từ chối mượn: ${activity.bookId?.title}`;
+          actionText = `Từ chối mượn: ${booksDisplay}`;
           type = 'system';
           break;
         default:
@@ -372,7 +432,7 @@ class ReportService {
     switch (type) {
       case 'books':
         return await Book.find({ isDeleted: false })
-          .select('title author isbn category categoryId totalQuantity available borrowed location status')
+          .select('title author isbn categoryId quantity available borrowed location status')
           .populate('categoryId', 'name')
           .sort({ title: 1 })
           .lean();
@@ -384,10 +444,25 @@ class ReportService {
           .lean();
 
       case 'overdue':
-        return await Borrow.find({ status: 'overdue' })
+        return await Borrow.find({ status: { $in: ['overdue', 'quá hạn', 'borrowed', 'đang mượn'] } })
+          .where('dueDate').lt(new Date())
           .populate('readerId', 'username fullName phone')
-          .populate('bookId', 'title isbn')
+          .populate('books.bookId', 'title isbn')
           .sort({ dueDate: 1 })
+          .lean();
+
+      case 'borrows':
+        return await Borrow.find()
+          .populate('readerId', 'username fullName phone')
+          .populate('books.bookId', 'title isbn')
+          .sort({ createdAt: -1 })
+          .lean();
+
+      case 'violations':
+        return await Borrow.find({ 'violation.amount': { $gt: 0 } })
+          .populate('readerId', 'username fullName phone')
+          .populate('books.bookId', 'title isbn')
+          .sort({ 'violation.isPaid': 1, updatedAt: -1 })
           .lean();
 
       case 'summary':

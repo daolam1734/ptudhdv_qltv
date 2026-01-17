@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import readerService from "../../services/readerService";
+import violationService from "../../services/violationService";
 import {
   Search,
   UserPlus,
@@ -31,10 +32,12 @@ const ReadersPage = () => {
   // Modal states
   const [showModal, setShowModal] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [showPayModal, setShowPayModal] = useState(false);
   const [historyReader, setHistoryReader] = useState(null);
   const [readerHistory, setReaderHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [currentReader, setCurrentReader] = useState(null);
+  const [paying, setPaying] = useState(false);
   const [formData, setFormData] = useState({
     username: "",
     email: "",
@@ -104,6 +107,23 @@ const ReadersPage = () => {
       address: reader.address || ""
     });
     setShowModal(true);
+  };
+
+  const handlePayAll = async () => {
+    if (!currentReader || currentReader.unpaidViolations <= 0) return;
+    
+    try {
+      setPaying(true);
+      await violationService.payAll(currentReader._id);
+      setMessage({ type: 'success', text: `Đã thu phí ${currentReader.unpaidViolations.toLocaleString()}đ từ độc giả ${currentReader.fullName}` });
+      setShowPayModal(false);
+      fetchReaders();
+      setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+    } catch (err) {
+      alert(err.response?.data?.message || "Thanh toán thất bại");
+    } finally {
+      setPaying(false);
+    }
   };
 
   const handleViewHistory = async (reader) => {
@@ -321,6 +341,18 @@ const ReadersPage = () => {
                     </td>
                     <td className="px-6 py-5 text-right">
                       <div className="flex items-center justify-end gap-2">
+                        {reader.unpaidViolations > 0 && (
+                          <button
+                            onClick={() => {
+                              setCurrentReader(reader);
+                              setShowPayModal(true);
+                            }}
+                            className="p-2 text-rose-500 hover:text-white hover:bg-rose-500 rounded-xl transition-all shadow-sm"
+                            title="Thu phí vi phạm"
+                          >
+                            <DollarSign size={16} />
+                          </button>
+                        )}
                         <button
                           onClick={() => handleViewHistory(reader)}
                           className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
@@ -582,6 +614,60 @@ const ReadersPage = () => {
                   <p className="text-gray-400 font-medium">Chưa có lịch sử lưu thông</p>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pay Fines Modal */}
+      {showPayModal && currentReader && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px]" onClick={() => !paying && setShowPayModal(false)}></div>
+          <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in duration-200">
+            <div className="p-8 text-center">
+              <div className="w-20 h-20 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                <DollarSign size={40} strokeWidth={2.5} />
+              </div>
+              <h3 className="text-2xl font-black text-gray-900 mb-2">Xác nhận thu phí</h3>
+              <p className="text-gray-500 font-medium px-4">
+                Bạn đang chuẩn bị thu <span className="text-rose-600 font-bold">{currentReader.unpaidViolations.toLocaleString()}đ</span> từ độc giả <span className="text-gray-900 font-bold">{currentReader.fullName}</span>.
+              </p>
+              
+              <div className="mt-8 p-4 bg-gray-50 rounded-2xl border border-gray-100 text-left">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm font-bold text-gray-500 italic">Tổng nợ:</span>
+                  <span className="text-lg font-black text-rose-600 underline">
+                    {currentReader.unpaidViolations.toLocaleString()}đ
+                  </span>
+                </div>
+                <p className="text-[11px] text-gray-400 font-medium italic">
+                  * Hệ thống sẽ tự động gạch nợ tất cả các khoản vi phạm và cập nhật trạng thái tài khoản cho độc giả.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mt-8">
+                <button
+                  disabled={paying}
+                  onClick={() => setShowPayModal(false)}
+                  className="px-6 py-4 bg-gray-100 text-gray-500 rounded-2xl font-bold hover:bg-gray-200 transition-all disabled:opacity-50"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  disabled={paying}
+                  onClick={handlePayAll}
+                  className="px-6 py-4 bg-emerald-600 text-white rounded-2xl font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100 flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {paying ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  ) : (
+                    <>
+                      <CheckCircle2 size={18} />
+                      Xác nhận nộp
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>

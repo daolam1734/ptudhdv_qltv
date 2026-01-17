@@ -198,7 +198,7 @@ const BooksPage = () => {
       const q = parseInt(formData.quantity) || 0;
       const payload = {
         ...formData,
-        isbn: formData.isbn.replace(/\D/g, ""),
+        isbn: formData.isbn, // Keep ISBN as is to let validator check format
         publishYear: parseInt(formData.publishYear) || new Date().getFullYear(),
         pages: parseInt(formData.pages) || 0,
         quantity: q,
@@ -214,7 +214,11 @@ const BooksPage = () => {
       setShowModal(false);
       fetchBooks();
     } catch (err) {
-      alert(err.response?.data?.message || "Thao tác thất bại");
+      console.error("Submit failed:", err.response?.data);
+      const errorMsg = err.response?.data?.errors 
+        ? err.response.data.errors.map(e => Object.values(e)[0]).join("\n")
+        : (err.response?.data?.message || "Thao tác thất bại");
+      alert(errorMsg);
     }
   };
 

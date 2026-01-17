@@ -8,6 +8,11 @@ class ReportController {
     ApiResponse.success(res, stats, 'Borrowed books statistics retrieved');
   });
 
+  getInventoryByCategory = asyncHandler(async (req, res) => {
+    const inventory = await reportService.getInventoryByCategory();
+    ApiResponse.success(res, inventory, 'Inventory by category retrieved');
+  });
+
   getTopReaders = asyncHandler(async (req, res) => {
     const { limit = 10 } = req.query;
     const topReaders = await reportService.getTopReaders(limit);
